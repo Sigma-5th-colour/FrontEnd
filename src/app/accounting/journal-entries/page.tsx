@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   Card,
   Input,
@@ -379,6 +379,13 @@ export default function JournalEntriesPage() {
       </Tag>
     );
 
+  const renderInfoItem = (label: string, value: ReactNode) => (
+    <div className={styles.entryInfoItem}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+
   const renderEntryActions = (record: JournalEntryListItem) => {
     const isDraft = record.status === JE_STATUS.Draft;
     const yearClosed = isYearClosed(record.date);
@@ -497,26 +504,6 @@ export default function JournalEntriesPage() {
                 <span>{t('التاريخ', 'Date')}</span>
                 <strong>{formatDate(record.date)}</strong>
               </div>
-              <div>
-                <span>{t('رقم العقد', 'Contract No.')}</span>
-                <strong>{contractDisplay(record)}</strong>
-              </div>
-              <div>
-                <span>{t('رقم مساند', 'Musaned #')}</span>
-                <strong>{display(record.musanedContractNumber)}</strong>
-              </div>
-              <div>
-                <span>{t('ألى', 'Related To')}</span>
-                <strong>{display(record.customerName || record.customerId)}</strong>
-              </div>
-              <div>
-                <span>{t('الوكيل', 'Agent')}</span>
-                <strong>{display(record.agentName || record.agentId)}</strong>
-              </div>
-              <div>
-                <span>{t('الموظف', 'Employee')}</span>
-                <strong>{display(record.employeeName || record.employeeId)}</strong>
-              </div>
             </div>
           </aside>
 
@@ -528,14 +515,21 @@ export default function JournalEntriesPage() {
                 </div>
                 <div className={styles.entryVoucherSubtitle}>
                   {t('نوع التقييد', 'Restriction Type')}: {display(record.restrictionTypeId ? restrictionLabel.get(record.restrictionTypeId) : null)}
-                  {' · '}
-                  {t('العاملة', 'Worker')}: {display(record.workerName || record.workerId)}
                 </div>
               </div>
               <div className={styles.entryTotalsCompact}>
                 <span>{t('مدين', 'Debit')}: <strong>{formatAmount(record.totalDebit)}</strong></span>
                 <span>{t('دائن', 'Credit')}: <strong className={record.isBalanced ? undefined : styles.unbalancedAmount}>{formatAmount(record.totalCredit)}</strong></span>
               </div>
+            </div>
+
+            <div className={styles.entryInfoGrid}>
+              {renderInfoItem(t('رقم العقد', 'Contract No.'), contractDisplay(record))}
+              {renderInfoItem(t('رقم مساند', 'Musaned #'), display(record.musanedContractNumber))}
+              {renderInfoItem(t('ألى', 'Related To'), display(record.customerName || record.customerId))}
+              {renderInfoItem(t('الوكيل', 'Agent'), display(record.agentName || record.agentId))}
+              {renderInfoItem(t('العاملة', 'Worker'), display(record.workerName || record.workerId))}
+              {renderInfoItem(t('الموظف', 'Employee'), display(record.employeeName || record.employeeId))}
             </div>
 
             <div className={styles.voucherTableScroll}>
