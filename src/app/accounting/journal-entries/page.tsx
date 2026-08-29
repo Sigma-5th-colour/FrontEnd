@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import {
   Card,
-  Table,
   Input,
   InputNumber,
   Select,
@@ -14,8 +13,10 @@ import {
   Popconfirm,
   Row,
   Col,
+  Empty,
+  Pagination,
+  Spin,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import {
   BookOutlined,
@@ -50,6 +51,7 @@ import {
   JE_SOURCE,
   getSourceLabel,
   type JournalEntryLookupOption,
+  type JournalEntryLineDetail,
   type JournalEntryListItem,
   type JournalEntryStatus,
   type JournalEntrySource,
@@ -173,11 +175,6 @@ export default function JournalEntriesPage() {
     workerId: record.workerId,
     employeeId: record.employeeId,
   });
-  /** True when this entry has a screen we can navigate to. */
-  const isNavigable = (record: JournalEntryListItem): boolean => {
-    const nav = resolveJournalEntryNavigation(navInput(record));
-    return !!nav.route && !nav.disabled;
-  };
   const isNewTabIntent = (e: MouseEvent<HTMLElement>) =>
     e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
   const goToSource = async (record: JournalEntryListItem, openInTab = false) => {
@@ -303,282 +300,292 @@ export default function JournalEntriesPage() {
   const postedCount = items.filter((e) => e.status === JE_STATUS.Posted).length;
   const systemCount = items.filter((e) => e.source !== JE_SOURCE.Manual).length;
 
-  // ── Columns ─────────────────────────────────────────────────
-  const columns: ColumnsType<JournalEntryListItem> = [
-    {
-      title: '#',
-      key: 'serialNumber',
-      width: 78,
-      render: (_, record, idx) => record.serialNumber ?? (pageNumber - 1) * pageSize + idx + 1,
-    },
-    {
-      title: t('رقم القيد', 'Entry No.'),
-      dataIndex: 'entryNumber',
-      key: 'entryNumber',
-      width: 120,
-      render: (v: string, record) => {
-        // Entry number goes to the source document (like the whole row). Manual
-        // entries have no source, so there it opens the JE detail instead.
-        // The eye icon (Actions) always opens the JE detail.
-        const nav = resolveJournalEntryNavigation(navInput(record));
-        const navigable = !!nav.route && !nav.disabled;
-        const href =
-          navigable && !nav.needsContractResolve
-            ? buildSourceUrl(nav.route as string, nav.id, nav.pathParam)
-            : null;
-        const activate = () => (navigable ? void goToSource(record) : setDetailId(record.id));
-        if (href) {
-          return (
-            <a className={styles.entryNumber} {...linkProps(href, router)}>
-              {v || '—'}
-            </a>
-          );
-        }
-        return (
-          <a
-            role="button"
-            tabIndex={0}
-            className={styles.entryNumber}
-            onClick={(e) => {
-              if (navigable) {
-                e.preventDefault();
-                void goToSource(record, isNewTabIntent(e));
-                return;
-              }
-              activate();
-            }}
-            onAuxClick={(e) => {
-              if (navigable && e.button === 1) {
-                e.preventDefault();
-                void goToSource(record, true);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                activate();
-              }
-            }}
-          >
-            {v || '—'}
-          </a>
-        );
+  const formatDate = (value?: string | null) => (value ? new Date(value).toLocaleDateString() : '—');
+  const formatAmount = (value?: number | null) => (Number(value) || 0).toLocaleString();
+  const display = (value?: string | number | null) =>
+    value !== undefined && value !== null && value !== '' ? value : '—';
+  const contractDisplay = (record: JournalEntryListItem) =>
+    display(record.contractNumber ?? record.sourceContractNumber);
+  const displaySerial = (record: JournalEntryListItem, idx: number) =>
+    record.serialNumber ?? (pageNumber - 1) * pageSize + idx + 1;
+  const getLineRows = (record: JournalEntryListItem): JournalEntryLineDetail[] => {
+    if (record.lines?.length) return record.lines;
+    return [
+      {
+        accountId: `summary-${record.id}`,
+        accountCode: '',
+        accountName: t('ملخص القيد', 'Entry summary'),
+        debit: record.totalDebit,
+        credit: record.totalCredit,
+        description: record.description || record.notes || null,
       },
-    },
-    {
-      title: t('رقم العقد', 'Contract No.'),
-      key: 'sourceContractNumber',
-      width: 120,
-      render: (_, record) =>
-        record.contractNumber ?? record.sourceContractNumber ? (
-          <Tag color="geekblue">#{record.contractNumber ?? record.sourceContractNumber}</Tag>
-        ) : (
-          <span className={styles.muted}>—</span>
-        ),
-    },
-    {
-      title: t('التاريخ', 'Date'),
-      dataIndex: 'date',
-      key: 'date',
-      width: 110,
-      render: (v: string) => (v ? new Date(v).toLocaleDateString() : '—'),
-    },
-    {
-      title: t('ألى', 'Related To'),
-      key: 'relatedTo',
-      width: 160,
-      render: (_, record) => record.customerName || record.customerId || <span className={styles.muted}>—</span>,
-    },
-    {
-      title: t('الموظف', 'Employee'),
-      key: 'employee',
-      width: 150,
-      render: (_, record) => record.employeeName || record.employeeId || <span className={styles.muted}>—</span>,
-    },
-    {
-      title: t('الوصف', 'Description'),
-      dataIndex: 'description',
-      key: 'description',
-      width: 240,
-      render: (v: string) => <span className={styles.description}>{v || '—'}</span>,
-    },
-    {
-      title: t('نوع القيد', 'Entry Type'),
-      dataIndex: 'source',
-      key: 'source',
-      width: 130,
-      render: (v: JournalEntrySource) => (
-        <span className={styles.muted}>{getSourceLabel(v, isAr)}</span>
-      ),
-    },
-    {
-      title: t('نوع التقييد', 'Restriction Type'),
-      dataIndex: 'restrictionTypeId',
-      key: 'restrictionTypeId',
-      width: 140,
-      render: (id: string | null) =>
-        id ? (
-          <Tag color="purple">{restrictionLabel.get(id) ?? '—'}</Tag>
-        ) : (
-          <span className={styles.muted}>—</span>
-        ),
-    },
-    {
-      title: t('مدين', 'Debit'),
-      dataIndex: 'totalDebit',
-      key: 'totalDebit',
-      width: 120,
-      align: 'right',
-      render: (v: number) => <span className={styles.amount}>{v.toLocaleString()}</span>,
-    },
-    {
-      title: t('دائن', 'Credit'),
-      dataIndex: 'totalCredit',
-      key: 'totalCredit',
-      width: 120,
-      align: 'right',
-      render: (v: number, record) => (
-        <span className={record.isBalanced ? styles.amount : styles.unbalancedAmount}>
-          {v.toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      title: t('الحالة', 'Status'),
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (v: JournalEntryStatus) =>
-        v === JE_STATUS.Posted ? (
-          <Tag icon={<CheckCircleFilled />} color="success">
-            {t('معمد', 'Posted')}
-          </Tag>
-        ) : (
-          <Tag icon={<CloseCircleFilled />} color="warning">
-            {t('غير معمد', 'Draft')}
-          </Tag>
-        ),
-    },
-    {
-      title: t('رقم مساند', 'Musaned #'),
-      dataIndex: 'musanedContractNumber',
-      key: 'musanedContractNumber',
-      width: 130,
-      render: (v: string | null) => v || <span className={styles.muted}>—</span>,
-    },
-    {
-      title: t('إجراءات', 'Actions'),
-      key: 'actions',
-      width: 160,
-      fixed: 'right',
-      render: (_, record) => {
-        const isDraft = record.status === JE_STATUS.Draft;
-        const yearClosed = isYearClosed(record.date);
-        return (
-          <Space size={2}>
-            <Tooltip title={t('عرض', 'View')}>
-              <Button
-                size="small"
-                type="text"
-                icon={<EyeOutlined />}
-                onClick={() => setDetailId(record.id)}
-              />
-            </Tooltip>
-            {isDraft ? (
-              <>
-                {accountingGates.canManage && (
-                  <>
-                    <Tooltip title={t('تعديل', 'Edit')}>
-                      <Button
-                        size="small"
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => openEdit(record.id)}
-                      />
-                    </Tooltip>
-                    <Tooltip
-                      title={
-                        yearClosed
-                          ? t('السنة المالية مغلقة', 'Fiscal year is closed')
-                          : t('اعتماد', 'Post')
-                      }
-                    >
-                      <Popconfirm
-                        title={t('اعتماد القيد؟', 'Post this entry?')}
-                        description={t(
-                          'سيتم ترحيل الحركات إلى الأستاذ العام.',
-                          'Ledger movements will be written for all lines.'
-                        )}
-                        okText={t('اعتماد', 'Post')}
-                        cancelText={t('إلغاء', 'Cancel')}
-                        okButtonProps={{ loading: isPosting, disabled: !record.isBalanced }}
-                        onConfirm={() => void postEntry(record.id).catch(() => {})}
-                        disabled={yearClosed}
-                      >
-                        <Button
-                          size="small"
-                          type="text"
-                          style={yearClosed ? undefined : { color: '#52c41a' }}
-                          icon={<CheckCircleOutlined />}
-                          disabled={yearClosed}
-                        />
-                      </Popconfirm>
-                    </Tooltip>
-                    <Tooltip title={t('حذف', 'Delete')}>
-                      <Popconfirm
-                        title={t('حذف القيد؟', 'Delete this entry?')}
-                        description={t(
-                          'سيتم حذف القيد نهائيًا. لا يمكن التراجع.',
-                          'This draft entry will be permanently deleted.'
-                        )}
-                        okText={t('حذف', 'Delete')}
-                        cancelText={t('إلغاء', 'Cancel')}
-                        okButtonProps={{ danger: true, loading: isDeleting }}
-                        onConfirm={() => void deleteEntry(record.id).catch(() => {})}
-                      >
-                        <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                      </Popconfirm>
-                    </Tooltip>
-                  </>
+    ];
+  };
+
+  const renderEntryNumberLink = (record: JournalEntryListItem) => {
+    const nav = resolveJournalEntryNavigation(navInput(record));
+    const navigable = !!nav.route && !nav.disabled;
+    const href =
+      navigable && !nav.needsContractResolve
+        ? buildSourceUrl(nav.route as string, nav.id, nav.pathParam)
+        : null;
+    const activate = () => (navigable ? void goToSource(record) : setDetailId(record.id));
+    if (href) {
+      return (
+        <a className={styles.entryNumber} {...linkProps(href, router)}>
+          {record.entryNumber || '—'}
+        </a>
+      );
+    }
+    return (
+      <a
+        role="button"
+        tabIndex={0}
+        className={styles.entryNumber}
+        onClick={(e) => {
+          if (navigable) {
+            e.preventDefault();
+            void goToSource(record, isNewTabIntent(e));
+            return;
+          }
+          activate();
+        }}
+        onAuxClick={(e) => {
+          if (navigable && e.button === 1) {
+            e.preventDefault();
+            void goToSource(record, true);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            activate();
+          }
+        }}
+      >
+        {record.entryNumber || '—'}
+      </a>
+    );
+  };
+
+  const renderStatusTag = (statusValue: JournalEntryStatus) =>
+    statusValue === JE_STATUS.Posted ? (
+      <Tag icon={<CheckCircleFilled />} color="success">
+        {t('معمد', 'Posted')}
+      </Tag>
+    ) : (
+      <Tag icon={<CloseCircleFilled />} color="warning">
+        {t('غير معمد', 'Draft')}
+      </Tag>
+    );
+
+  const renderEntryActions = (record: JournalEntryListItem) => {
+    const isDraft = record.status === JE_STATUS.Draft;
+    const yearClosed = isYearClosed(record.date);
+    return (
+      <Space size={6} wrap className={styles.cardActions}>
+        <Button
+          size="small"
+          icon={<EyeOutlined />}
+          onClick={() => setDetailId(record.id)}
+        >
+          {t('عرض', 'View')}
+        </Button>
+        {accountingGates.canManage && isDraft && (
+          <>
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openEdit(record.id)}
+            >
+              {t('تعديل', 'Edit')}
+            </Button>
+            <Tooltip
+              title={
+                yearClosed
+                  ? t('السنة المالية مغلقة', 'Fiscal year is closed')
+                  : t('اعتماد القيد', 'Post to ledger')
+              }
+            >
+              <Popconfirm
+                title={t('اعتماد القيد؟', 'Post this entry?')}
+                description={t(
+                  'سيتم ترحيل الحركات إلى الأستاذ العام.',
+                  'Ledger movements will be written for all lines.'
                 )}
-              </>
-            ) : (
-              accountingGates.canManage && (
-                <Tooltip
-                  title={
-                    yearClosed
-                      ? t('السنة المالية مغلقة', 'Fiscal year is closed')
-                      : t('إلغاء الاعتماد', 'Unpost')
-                  }
+                okText={t('اعتماد', 'Post')}
+                cancelText={t('إلغاء', 'Cancel')}
+                okButtonProps={{ loading: isPosting, disabled: !record.isBalanced }}
+                onConfirm={() => void postEntry(record.id).catch(() => {})}
+                disabled={yearClosed}
+              >
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  disabled={yearClosed}
                 >
-                  <Popconfirm
-                    title={t('إلغاء اعتماد القيد؟', 'Unpost this entry?')}
-                    description={t(
-                      'سيتم عكس الحركات وإعادة القيد إلى مسودة.',
-                      'Ledger movements will be reversed; entry returns to Draft.'
-                    )}
-                    okText={t('إلغاء الاعتماد', 'Unpost')}
-                    cancelText={t('رجوع', 'Back')}
-                    okButtonProps={{ loading: isUnposting }}
-                    onConfirm={() => void unpostEntry(record.id).catch(() => {})}
-                    disabled={yearClosed}
-                  >
-                    <Button
-                      size="small"
-                      type="text"
-                      style={yearClosed ? undefined : { color: '#fa8c16' }}
-                      icon={<RollbackOutlined />}
-                      disabled={yearClosed}
-                    />
-                  </Popconfirm>
-                </Tooltip>
-              )
-            )}
-          </Space>
-        );
-      },
-    },
-  ];
+                  {t('اعتماد القيد', 'Post')}
+                </Button>
+              </Popconfirm>
+            </Tooltip>
+            <Popconfirm
+              title={t('حذف القيد؟', 'Delete this entry?')}
+              description={t(
+                'سيتم حذف القيد نهائيًا. لا يمكن التراجع.',
+                'This draft entry will be permanently deleted.'
+              )}
+              okText={t('حذف', 'Delete')}
+              cancelText={t('إلغاء', 'Cancel')}
+              okButtonProps={{ danger: true, loading: isDeleting }}
+              onConfirm={() => void deleteEntry(record.id).catch(() => {})}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />}>
+                {t('حذف', 'Delete')}
+              </Button>
+            </Popconfirm>
+          </>
+        )}
+        {accountingGates.canManage && !isDraft && (
+          <Tooltip
+            title={
+              yearClosed
+                ? t('السنة المالية مغلقة', 'Fiscal year is closed')
+                : t('إلغاء الاعتماد', 'Unpost')
+            }
+          >
+            <Popconfirm
+              title={t('إلغاء اعتماد القيد؟', 'Unpost this entry?')}
+              description={t(
+                'سيتم عكس الحركات وإعادة القيد إلى مسودة.',
+                'Ledger movements will be reversed; entry returns to Draft.'
+              )}
+              okText={t('إلغاء الاعتماد', 'Unpost')}
+              cancelText={t('رجوع', 'Back')}
+              okButtonProps={{ loading: isUnposting }}
+              onConfirm={() => void unpostEntry(record.id).catch(() => {})}
+              disabled={yearClosed}
+            >
+              <Button size="small" icon={<RollbackOutlined />} disabled={yearClosed}>
+                {t('إلغاء الاعتماد', 'Unpost')}
+              </Button>
+            </Popconfirm>
+          </Tooltip>
+        )}
+      </Space>
+    );
+  };
+
+  const renderEntryCard = (record: JournalEntryListItem, idx: number) => {
+    const lines = getLineRows(record);
+    return (
+      <article key={record.id} className={styles.journalEntryCard}>
+        <div className={styles.entryCardBody}>
+          <aside className={styles.entryCardMeta}>
+            <div className={styles.entryMetaTop}>
+              {renderStatusTag(record.status)}
+              <Tag color="blue">{getSourceLabel(record.source, isAr)}</Tag>
+            </div>
+            <div className={styles.entrySerial}>{displaySerial(record, idx)}</div>
+            <div className={styles.entrySerialLabel}>{t('الرقم المتسلسل', 'Serial Number')}</div>
+            <div className={styles.entryMetaStack}>
+              <div>
+                <span>{t('رقم القيد', 'Entry No.')}</span>
+                <strong>{renderEntryNumberLink(record)}</strong>
+              </div>
+              <div>
+                <span>{t('التاريخ', 'Date')}</span>
+                <strong>{formatDate(record.date)}</strong>
+              </div>
+              <div>
+                <span>{t('رقم العقد', 'Contract No.')}</span>
+                <strong>{contractDisplay(record)}</strong>
+              </div>
+              <div>
+                <span>{t('رقم مساند', 'Musaned #')}</span>
+                <strong>{display(record.musanedContractNumber)}</strong>
+              </div>
+              <div>
+                <span>{t('ألى', 'Related To')}</span>
+                <strong>{display(record.customerName || record.customerId)}</strong>
+              </div>
+              <div>
+                <span>{t('الوكيل', 'Agent')}</span>
+                <strong>{display(record.agentName || record.agentId)}</strong>
+              </div>
+              <div>
+                <span>{t('الموظف', 'Employee')}</span>
+                <strong>{display(record.employeeName || record.employeeId)}</strong>
+              </div>
+            </div>
+          </aside>
+
+          <section className={styles.entryVoucherPanel}>
+            <div className={styles.entryVoucherHeader}>
+              <div>
+                <div className={styles.entryVoucherTitle}>
+                  {record.description || record.notes || t('قيد يومية', 'Journal Entry')}
+                </div>
+                <div className={styles.entryVoucherSubtitle}>
+                  {t('نوع التقييد', 'Restriction Type')}: {display(record.restrictionTypeId ? restrictionLabel.get(record.restrictionTypeId) : null)}
+                  {' · '}
+                  {t('العاملة', 'Worker')}: {display(record.workerName || record.workerId)}
+                </div>
+              </div>
+              <div className={styles.entryTotalsCompact}>
+                <span>{t('مدين', 'Debit')}: <strong>{formatAmount(record.totalDebit)}</strong></span>
+                <span>{t('دائن', 'Credit')}: <strong className={record.isBalanced ? undefined : styles.unbalancedAmount}>{formatAmount(record.totalCredit)}</strong></span>
+              </div>
+            </div>
+
+            <div className={styles.voucherTableScroll}>
+              <table className={styles.voucherTable}>
+                <thead>
+                  <tr>
+                    <th>{t('م', '#')}</th>
+                    <th>{t('اسم الحساب', 'Account')}</th>
+                    <th>{t('مدين', 'Debit')}</th>
+                    <th>{t('دائن', 'Credit')}</th>
+                    <th>{t('الوصف', 'Description')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line, lineIdx) => (
+                    <tr key={line.id ?? `${record.id}-${lineIdx}`}>
+                      <td className={styles.lineSerial}>{lineIdx + 1}</td>
+                      <td>
+                        <span className={styles.lineAccountCode}>{line.accountCode || '—'}</span>
+                        <span className={styles.lineAccountName}>{line.accountName || '—'}</span>
+                      </td>
+                      <td className={styles.moneyCell}>
+                        {line.debit ? <span className={styles.amount}>{formatAmount(line.debit)}</span> : <span className={styles.muted}>—</span>}
+                      </td>
+                      <td className={styles.moneyCell}>
+                        {line.credit ? <span className={styles.amount}>{formatAmount(line.credit)}</span> : <span className={styles.muted}>—</span>}
+                      </td>
+                      <td>{line.description || record.description || <span className={styles.muted}>—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={2}>{t('إجمالي', 'Total')}</td>
+                    <td className={styles.moneyCell}>{formatAmount(record.totalDebit)}</td>
+                    <td className={styles.moneyCell}>{formatAmount(record.totalCredit)}</td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className={styles.entryCardFooter}>
+              {renderEntryActions(record)}
+            </div>
+          </section>
+        </div>
+      </article>
+    );
+  };
 
   return (
     <div className={styles.page}>
@@ -838,43 +845,33 @@ export default function JournalEntriesPage() {
         </Row>
       </AdvancedFilterPanel>
 
-      {/* ── Table ────────────────────────────────────────────── */}
-      <Card className={styles.tableCard}>
-        <Table<JournalEntryListItem>
-          rowKey="id"
-          columns={columns}
-          dataSource={items}
-          loading={isLoading || isFetching}
-          size="middle"
-          bordered
-          scroll={{ x: 1300 }}
-          onRow={(record) => {
-            const navigable = isNavigable(record);
-            return {
-              className: navigable ? styles.sourceRow : undefined,
-              onClick: (e) => {
-                // Let the entry-number link, action buttons, and any other
-                // interactive control handle their own clicks.
-                if ((e.target as HTMLElement).closest('a, button, .ant-btn, .ant-popover, input, .ant-select')) {
-                  return;
-                }
-                if (navigable) void goToSource(record);
-              },
-            };
-          }}
-          pagination={{
-            current: pageNumber,
-            pageSize,
-            total: totalCount,
-            showSizeChanger: true,
-            pageSizeOptions: [10, 15, 20, 25, 50, 100],
-            showTotal: (total) => t(`الإجمالي: ${total}`, `Total: ${total}`),
-            onChange: (page, size) => {
+      {/* ── Voucher cards ────────────────────────────────────── */}
+      <Card className={styles.resultsCard}>
+        {isLoading || isFetching ? (
+          <div className={styles.loadingState}>
+            <Spin size="large" />
+          </div>
+        ) : items.length === 0 ? (
+          <Empty description={t('لا توجد قيود', 'No journal entries')} />
+        ) : (
+          <div className={styles.journalCardList}>
+            {items.map((record, idx) => renderEntryCard(record, idx))}
+          </div>
+        )}
+        <div className={styles.paginationBar}>
+          <Pagination
+            current={pageNumber}
+            pageSize={pageSize}
+            total={totalCount}
+            showSizeChanger
+            pageSizeOptions={[10, 15, 20, 25, 50, 100]}
+            showTotal={(total) => t(`الإجمالي: ${total}`, `Total: ${total}`)}
+            onChange={(page, size) => {
               setPageNumber(page);
               setPageSize(size);
-            },
-          }}
-        />
+            }}
+          />
+        </div>
       </Card>
 
       {/* ── Drawers ──────────────────────────────────────────── */}
