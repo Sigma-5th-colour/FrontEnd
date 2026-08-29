@@ -564,6 +564,8 @@ export const API_ENDPOINTS = {
   // Only Draft entries can be updated or deleted. All IDs are GUIDs.
   JOURNAL_ENTRIES: {
     GET_ALL: '/api/V1/JournalEntries',
+    SEARCH: '/api/V1/JournalEntries/search',
+    LOOKUPS: '/api/V1/JournalEntries/lookups',
     GET_BY_ID: (id: string) => `/api/V1/JournalEntries/${id}`,
     CREATE: '/api/V1/JournalEntries',
     UPDATE: (id: string) => `/api/V1/JournalEntries/${id}`,

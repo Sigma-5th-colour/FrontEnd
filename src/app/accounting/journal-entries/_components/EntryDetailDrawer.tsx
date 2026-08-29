@@ -52,15 +52,26 @@ export function EntryDetailDrawer({ open, entryId, onClose, onEdit }: EntryDetai
 
   const lineColumns: ColumnsType<JournalEntryLineDetail> = [
     {
+      title: '#',
+      key: 'lineIndex',
+      width: 54,
+      render: (_, __, idx) => idx + 1,
+    },
+    {
       title: t('الحساب', 'Account'),
       key: 'account',
       render: (_, l) => (
         <div>
           <span className={styles.lineAccountCode}>{l.accountCode}</span>
           <span className={styles.lineAccountName}>{l.accountName}</span>
-          {l.description && <span className={styles.lineDescription}>{l.description}</span>}
         </div>
       ),
+    },
+    {
+      title: t('الوصف', 'Description'),
+      dataIndex: 'description',
+      key: 'description',
+      render: (v: string | null) => v || <span className={styles.muted}>—</span>,
     },
     {
       title: t('مدين', 'Debit'),
@@ -126,7 +137,7 @@ export function EntryDetailDrawer({ open, entryId, onClose, onEdit }: EntryDetai
     <Drawer
       open={open}
       onClose={onClose}
-      width={620}
+      width={960}
       destroyOnHidden
       title={
         <Space>
@@ -226,67 +237,90 @@ export function EntryDetailDrawer({ open, entryId, onClose, onEdit }: EntryDetai
       ) : !entry ? (
         <Empty description={t('لا توجد بيانات', 'No data')} />
       ) : (
-        <>
-          <div className={styles.detailFacts}>
-            {fact(
-              t('الحالة', 'Status'),
-              entry.status === JE_STATUS.Posted ? (
-                <Tag color="success">{getStatusLabel(JE_STATUS.Posted, isAr)}</Tag>
-              ) : (
-                <Tag color="warning">{getStatusLabel(entry.status, isAr)}</Tag>
-              )
-            )}
-            {fact(t('المصدر', 'Source'), getSourceLabel(entry.source, isAr))}
-            {fact(t('نوع المرجع', 'Reference'), getReferenceTypeLabel(entry.referenceType, isAr))}
-            {entry.sourceContractNumber &&
-              fact(t('رقم العقد', 'Contract No.'), `#${entry.sourceContractNumber}`)}
-            {fact(t('التاريخ', 'Date'), entry.date ? new Date(entry.date).toLocaleDateString() : '—')}
-            {fact(
-              t('التوازن', 'Balanced'),
-              entry.isBalanced ? (
-                <span style={{ color: '#389e0d' }}>
-                  <CheckCircleFilled /> {t('متوازن', 'Yes')}
-                </span>
-              ) : (
-                <span style={{ color: '#cf1322' }}>
-                  <CloseCircleFilled /> {t('غير متوازن', 'No')}
-                </span>
-              )
-            )}
-            {entry.createdBy && fact(t('أنشئ بواسطة', 'Created by'), entry.createdBy)}
-            {entry.createdDate &&
-              fact(t('تاريخ الإنشاء', 'Created on'), new Date(entry.createdDate).toLocaleString())}
-          </div>
+        <div className={styles.journalDetailCard}>
+          <aside className={styles.journalMetaPanel}>
+            <div className={styles.serialValue}>{entry.serialNumber ?? '—'}</div>
+            <div className={styles.serialLabel}>{t('الرقم المتسلسل', 'Serial Number')}</div>
+            <div className={styles.metaStack}>
+              {fact(t('رقم القيد', 'Entry No.'), entry.entryNumber || '—')}
+              {fact(
+                t('الحالة', 'Status'),
+                entry.status === JE_STATUS.Posted ? (
+                  <Tag color="success">{getStatusLabel(JE_STATUS.Posted, isAr)}</Tag>
+                ) : (
+                  <Tag color="warning">{getStatusLabel(entry.status, isAr)}</Tag>
+                )
+              )}
+              {fact(t('التاريخ', 'Date'), entry.date ? new Date(entry.date).toLocaleDateString() : '—')}
+              {fact(
+                t('رقم العقد', 'Contract No.'),
+                (entry.contractNumber ?? entry.sourceContractNumber)
+                  ? `#${entry.contractNumber ?? entry.sourceContractNumber}`
+                  : '—'
+              )}
+              {fact(t('رقم مساند', 'Musaned #'), entry.musanedContractNumber || '—')}
+              {fact(t('ألى', 'Related To'), entry.customerName || entry.customerId || '—')}
+              {fact(t('الوكيل', 'Agent'), entry.agentName || entry.agentId || '—')}
+              {fact(t('العاملة', 'Worker'), entry.workerName || entry.workerId || '—')}
+              {fact(t('الموظف', 'Employee'), entry.employeeName || entry.employeeId || '—')}
+            </div>
+          </aside>
 
-          <div className={styles.factItem} style={{ marginBlockEnd: 16 }}>
-            <div className={styles.factLabel}>{t('الوصف', 'Description')}</div>
-            <div className={styles.factValue}>{entry.description || '—'}</div>
-          </div>
+          <section className={styles.journalLinesPanel}>
+            <div className={styles.detailFacts}>
+              {fact(t('المصدر', 'Source'), getSourceLabel(entry.source, isAr))}
+              {fact(t('نوع المرجع', 'Reference'), getReferenceTypeLabel(entry.referenceType, isAr))}
+              {fact(
+                t('التوازن', 'Balanced'),
+                entry.isBalanced ? (
+                  <span style={{ color: '#389e0d' }}>
+                    <CheckCircleFilled /> {t('متوازن', 'Yes')}
+                  </span>
+                ) : (
+                  <span style={{ color: '#cf1322' }}>
+                    <CloseCircleFilled /> {t('غير متوازن', 'No')}
+                  </span>
+                )
+              )}
+              {fact(t('أنشئ بواسطة', 'Created by'), entry.createdBy || '—')}
+              {fact(
+                t('تاريخ الإنشاء', 'Created on'),
+                entry.createdDate ? new Date(entry.createdDate).toLocaleString() : '—'
+              )}
+            </div>
 
-          <Table<JournalEntryLineDetail>
-            rowKey={(_, idx) => String(idx)}
-            columns={lineColumns}
-            dataSource={entry.lines}
-            pagination={false}
-            size="small"
-            bordered
-            summary={() => (
-              <Table.Summary fixed>
-                <Table.Summary.Row>
-                  <Table.Summary.Cell index={0} align="center">
-                    <strong>{t('الإجمالي', 'Total')}</strong>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1} align="right">
-                    <strong className={styles.amount}>{entry.totalDebit.toLocaleString()}</strong>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="right">
-                    <strong className={styles.amount}>{entry.totalCredit.toLocaleString()}</strong>
-                  </Table.Summary.Cell>
-                </Table.Summary.Row>
-              </Table.Summary>
-            )}
-          />
-        </>
+            <div className={styles.factItem} style={{ marginBlockEnd: 16 }}>
+              <div className={styles.factLabel}>{t('الوصف', 'Description')}</div>
+              <div className={styles.factValue}>{entry.description || entry.notes || '—'}</div>
+            </div>
+
+            <Table<JournalEntryLineDetail>
+              rowKey={(_, idx) => String(idx)}
+              columns={lineColumns}
+              dataSource={entry.lines}
+              pagination={false}
+              size="small"
+              bordered
+              scroll={{ x: 720 }}
+              summary={() => (
+                <Table.Summary fixed>
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} />
+                    <Table.Summary.Cell index={1} colSpan={2} align="center">
+                      <strong>{t('الإجمالي', 'Total')}</strong>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={3} align="right">
+                      <strong className={styles.amount}>{entry.totalDebit.toLocaleString()}</strong>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={4} align="right">
+                      <strong className={styles.amount}>{entry.totalCredit.toLocaleString()}</strong>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                </Table.Summary>
+              )}
+            />
+          </section>
+        </div>
       )}
     </Drawer>
   );

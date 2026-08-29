@@ -53,17 +53,35 @@ export default function GeneralLedgerPage() {
       dataIndex: 'entryNumber',
       key: 'entryNumber',
       width: 120,
-      render: (v) =>
+      render: (v, record) =>
         v ? (
           <a
             className={styles.entryNumber}
-            {...linkProps(`/accounting/journal-entries?entryNumber=${encodeURIComponent(v)}`, router)}
+            {...linkProps(
+              record.journalEntryId
+                ? `/accounting/journal-entries?openId=${encodeURIComponent(record.journalEntryId)}`
+                : `/accounting/journal-entries?entryNumber=${encodeURIComponent(v)}`,
+              router
+            )}
           >
             {v}
           </a>
         ) : (
           <span className={styles.entryNumber}>—</span>
         ),
+    },
+    {
+      title: t('رقم العقد', 'Contract No.'),
+      dataIndex: 'contractNumber',
+      key: 'contractNumber',
+      width: 120,
+      render: (v) => (v ? <span className={styles.code}>#{v}</span> : <span className={styles.muted}>—</span>),
+    },
+    {
+      title: t('العميل', 'Customer'),
+      key: 'customerName',
+      width: 180,
+      render: (_, record) => record.customerName || record.customerId || <span className={styles.muted}>—</span>,
     },
     {
       title: t('الوصف', 'Description'),
@@ -195,7 +213,7 @@ export default function GeneralLedgerPage() {
               loading={isFetching}
               size="middle"
               bordered
-              scroll={{ x: 800 }}
+              scroll={{ x: 1100 }}
               locale={{ emptyText: t('لا توجد حركات في هذه الفترة', 'No movements in this period') }}
               pagination={{ pageSize: 20, showSizeChanger: true }}
             />

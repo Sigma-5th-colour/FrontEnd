@@ -26,11 +26,16 @@ export interface DateRangeQuery {
 export interface GeneralLedgerLine {
   date: string;
   entryNumber: string;
+  journalEntryId?: string | null;
   description: string;
   debit: number;
   credit: number;
   /** Running balance after this movement. */
   balanceAfter: number;
+  customerId?: string | null;
+  customerName?: string | null;
+  contractNumber?: number | string | null;
+  contractId?: string | null;
 }
 
 export interface GeneralLedger {

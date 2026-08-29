@@ -75,10 +75,16 @@ export class LedgerService {
         (l): GeneralLedgerLine => ({
           date: l?.date ?? '',
           entryNumber: l?.entryNumber ?? '',
+          journalEntryId: l?.journalEntryId ?? l?.entryId ?? null,
           description: l?.description ?? '',
           debit: this.num(l?.debit),
           credit: this.num(l?.credit),
           balanceAfter: this.num(l?.balanceAfter),
+          customerId: l?.customerId ?? null,
+          customerName: l?.customerName ?? l?.customerNameAr ?? l?.customerNameEn ?? null,
+          contractNumber:
+            l?.contractNumber ?? l?.sourceContractNumber ?? l?.referenceContractNumber ?? null,
+          contractId: l?.contractId ?? null,
         })
       ),
     };

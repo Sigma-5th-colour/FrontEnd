@@ -168,6 +168,45 @@
   margin-block-end: 16px;
 }
 
+.journalDetailCard {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.journalMetaPanel,
+.journalLinesPanel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.journalMetaPanel {
+  text-align: center;
+}
+
+.serialValue {
+  font-size: 34px;
+  line-height: 1.1;
+  color: #1677ff;
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
+}
+
+.serialLabel {
+  color: #6b7280;
+  font-size: 12px;
+  margin-block: 4px 12px;
+}
+
+.metaStack {
+  display: grid;
+  gap: 8px;
+  text-align: initial;
+}
+
 .factItem {
   background: #fafafa;
   border-radius: 8px;
@@ -312,5 +351,13 @@
   .lineRow,
   .lineRowHead {
     grid-template-columns: 1fr 90px 90px 32px;
+  }
+
+  .journalDetailCard {
+    grid-template-columns: 1fr;
+  }
+
+  .detailFacts {
+    grid-template-columns: 1fr;
   }
 }

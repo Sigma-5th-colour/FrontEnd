@@ -102,6 +102,12 @@ export default function MediationContractDetailView({
   // Payment-status tag colour: green = fully paid, orange = partial, red/default otherwise.
   const paymentStatusColor =
     contract.paymentStatusCode === 2 ? 'green' : contract.paymentStatusCode === 1 ? 'orange' : 'red';
+  const paymentStatusLabel =
+    contract.paymentStatusCode === 2
+      ? language === 'ar' ? 'مدفوع' : 'Paid'
+      : contract.paymentStatusCode === 1
+      ? language === 'ar' ? 'مدفوع جزئياً' : 'Partially Paid'
+      : contract.paymentStatus || t.paymentStatus;
 
   return (
     <Tabs
@@ -313,7 +319,7 @@ export default function MediationContractDetailView({
                 >
                   <span style={{ fontSize: 13, color: '#8c8c8c' }}>{t.paymentProgress}</span>
                   <Tag color={paymentStatusColor}>
-                    {contract.paymentStatus || t.paymentStatus}
+                    {paymentStatusLabel}
                   </Tag>
                 </div>
                 <Progress
@@ -334,6 +340,18 @@ export default function MediationContractDetailView({
                     </div>
                   </div>
                 </div>
+                {contract.paymentStatusCode === 1 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    message={
+                      language === 'ar'
+                        ? `يوجد رصيد متبقٍ غير مسدد: ${fmtCurrency(contract.remainingAmount)}`
+                        : `Outstanding balance remains: ${fmtCurrency(contract.remainingAmount)}`
+                    }
+                    style={{ marginBlockStart: 12 }}
+                  />
+                )}
               </div>
 
               <Descriptions column={3} size="small" bordered>

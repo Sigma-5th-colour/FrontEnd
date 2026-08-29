@@ -30,25 +30,29 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
 } from '@ant-design/icons';
-import { useJournalEntries, useJournalEntryMutations } from '@/hooks/api/useJournalEntries';
+import {
+  useJournalEntries,
+  useJournalEntryLookups,
+  useJournalEntryMutations,
+} from '@/hooks/api/useJournalEntries';
 import { useRestrictionTypes } from '@/hooks/api/useRestrictionTypes';
 import { useClosedYears } from '@/hooks/api/usePeriodClosing';
 import { useCustomers } from '@/hooks/api/useCustomers';
-import { useAgents } from '@/hooks/api/useAgents';
-import { useWorkers } from '@/hooks/api/useWorkers';
+import { useHREmployees } from '@/hooks/api/useHR';
 import { useAuthStore } from '@/store/authStore';
 import { AdvancedFilterPanel, BranchFilterSelect, DateRangeFilter } from '@/components/filters';
 import {
   JOURNAL_STATUSES,
   JOURNAL_SOURCES,
-  JOURNAL_REFERENCE_TYPES,
+  JOURNAL_SORT_BY,
+  JOURNAL_SORT_DIRECTION,
   JE_STATUS,
   JE_SOURCE,
   getSourceLabel,
+  type JournalEntryLookupOption,
   type JournalEntryListItem,
   type JournalEntryStatus,
   type JournalEntrySource,
-  type JournalReferenceType,
 } from '@/types/journal-entry.types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { message } from 'antd';
@@ -78,9 +82,10 @@ export default function JournalEntriesPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState(''); // debounced, server-side
   const [status, setStatus] = useState<JournalEntryStatus | undefined>();
-  const [source, setSource] = useState<JournalEntrySource | undefined>();
-  const [referenceType, setReferenceType] = useState<JournalReferenceType | undefined>();
+  const [entryType, setEntryType] = useState<JournalEntrySource | undefined>();
+  const [contractType, setContractType] = useState<number | undefined>();
   const [contractNumber, setContractNumber] = useState<number | undefined>();
+  const [musanedContractNumber, setMusanedContractNumber] = useState<string | undefined>();
   const [exactEntryNumber, setExactEntryNumber] = useState<string | undefined>(
     entryNumberParam ?? undefined
   );
@@ -90,23 +95,10 @@ export default function JournalEntriesPage() {
     dayjs().subtract(1, 'month').startOf('day').toISOString(),
     dayjs().endOf('day').toISOString(),
   ]);
-  const [updatedRange, setUpdatedRange] = useState<[string | undefined, string | undefined]>([
-    undefined,
-    undefined,
-  ]);
-  const [createdRange, setCreatedRange] = useState<[string | undefined, string | undefined]>([
-    undefined,
-    undefined,
-  ]);
   const [customerId, setCustomerId] = useState<string | undefined>();
-  const [agentId, setAgentId] = useState<string | undefined>();
-  const [workerId, setWorkerId] = useState<string | undefined>();
   const [employeeId, setEmployeeId] = useState<string | undefined>();
-  // Numeric amount-bound filters (NOT dates, despite the From/To naming).
-  const [totalDebitFrom, setTotalDebitFrom] = useState<number | undefined>();
-  const [totalDebitTo, setTotalDebitTo] = useState<number | undefined>();
-  const [totalCreditFrom, setTotalCreditFrom] = useState<number | undefined>();
-  const [totalCreditTo, setTotalCreditTo] = useState<number | undefined>();
+  const [sortBy, setSortBy] = useState<number>(JOURNAL_SORT_BY.Date);
+  const [sortDirection, setSortDirection] = useState<number>(JOURNAL_SORT_DIRECTION.Desc);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -120,39 +112,32 @@ export default function JournalEntriesPage() {
   }, [searchInput]);
 
   const { restrictionTypes } = useRestrictionTypes();
+  const { data: lookups } = useJournalEntryLookups();
   // Posting/unposting is blocked by the backend inside a closed fiscal year;
   // gate those actions in the UI too (fails open if the list is unavailable).
   const { isYearClosed } = useClosedYears();
   const { customers = [] } = useCustomers();
-  const { data: agents = [] } = useAgents();
-  const { data: workers = [] } = useWorkers();
+  const { employees = [] } = useHREmployees({ PageSize: 200 });
 
   const { items, totalCount, isLoading, isFetching, refetch } = useJournalEntries({
     pageNumber,
     pageSize,
-    // Server-side free-text search (verified live: Search + EntryNumber work).
-    search: search || undefined,
+    // `notes` is a contains filter over description/notes in POST /search.
+    notes: search || undefined,
     status,
-    source,
-    referenceType,
+    entryType,
+    contractType,
     contractNumber,
+    musanedContractNumber,
     entryNumber: exactEntryNumber,
     branchId,
     includeSubBranches: branchId ? includeSubBranches : undefined,
-    from: range[0],
-    to: range[1],
-    createdDateFrom: createdRange[0],
-    createdDateTo: createdRange[1],
-    updatedDateFrom: updatedRange[0],
-    updatedDateTo: updatedRange[1],
-    customerId,
-    agentId,
-    workerId,
+    createdFrom: range[0],
+    createdTo: range[1],
+    relatedToId: customerId,
     employeeId,
-    totalDebitFrom,
-    totalDebitTo,
-    totalCreditFrom,
-    totalCreditTo,
+    sortBy,
+    sortDirection,
   });
 
   const { deleteEntry, postEntry, unpostEntry, isDeleting, isPosting, isUnposting } =
@@ -222,6 +207,42 @@ export default function JournalEntriesPage() {
     return map;
   }, [restrictionTypes]);
 
+  const lookupLabel = (option: JournalEntryLookupOption) =>
+    (isAr ? option.nameAr : option.nameEn) || option.name || option.nameAr || option.nameEn || String(option.value);
+  const entryStatusOptions =
+    lookups?.entryStatuses?.length
+      ? lookups.entryStatuses.map((s) => ({ value: s.value, label: lookupLabel(s) }))
+      : JOURNAL_STATUSES.map((s) => ({ value: s.value, label: isAr ? s.ar : s.en }));
+  const entryTypeOptions =
+    lookups?.entryTypes?.length
+      ? lookups.entryTypes.map((s) => ({ value: s.value, label: lookupLabel(s) }))
+      : JOURNAL_SOURCES.map((s) => ({ value: s.value, label: isAr ? s.ar : s.en }));
+  const contractTypeOptions =
+    lookups?.contractTypes?.length
+      ? lookups.contractTypes.map((s) => ({ value: s.value, label: lookupLabel(s) }))
+      : [
+          { value: 1, label: t('عقد جديد', 'New') },
+          { value: 2, label: t('نقل', 'Transfer') },
+          { value: 3, label: t('تجديد', 'Renewal') },
+        ];
+  const sortByOptions =
+    lookups?.sortByOptions?.length
+      ? lookups.sortByOptions.map((s) => ({ value: s.value, label: lookupLabel(s) }))
+      : [
+          { value: JOURNAL_SORT_BY.Date, label: t('التاريخ', 'Date') },
+          { value: JOURNAL_SORT_BY.EntryNumber, label: t('رقم القيد', 'Entry No.') },
+          { value: JOURNAL_SORT_BY.ContractNumber, label: t('رقم العقد', 'Contract No.') },
+          { value: JOURNAL_SORT_BY.Status, label: t('الحالة', 'Status') },
+          { value: JOURNAL_SORT_BY.SerialNumber, label: t('الرقم المتسلسل', 'Serial #') },
+        ];
+  const sortDirectionOptions =
+    lookups?.sortDirections?.length
+      ? lookups.sortDirections.map((s) => ({ value: s.value, label: lookupLabel(s) }))
+      : [
+          { value: JOURNAL_SORT_DIRECTION.Asc, label: t('تصاعدي', 'Ascending') },
+          { value: JOURNAL_SORT_DIRECTION.Desc, label: t('تنازلي', 'Descending') },
+        ];
+
   useEffect(() => {
     if (openIdParam) setDetailId(openIdParam);
   }, [openIdParam]);
@@ -247,43 +268,33 @@ export default function JournalEntriesPage() {
   // baseline "no explicit filter" state).
   const activeFilterCount = [
     status,
-    source,
+    entryType,
+    contractType,
     contractNumber,
+    musanedContractNumber,
     exactEntryNumber,
-    referenceType,
     customerId,
-    agentId,
-    workerId,
     employeeId,
     range[0],
-    createdRange[0],
-    updatedRange[0],
-    totalDebitFrom,
-    totalDebitTo,
-    totalCreditFrom,
-    totalCreditTo,
+    sortBy !== JOURNAL_SORT_BY.Date ? sortBy : undefined,
+    sortDirection !== JOURNAL_SORT_DIRECTION.Desc ? sortDirection : undefined,
   ].filter((v) => v !== undefined && v !== null && v !== '').length;
 
   const clearFilters = () => {
     setStatus(undefined);
-    setSource(undefined);
-    setReferenceType(undefined);
+    setEntryType(undefined);
+    setContractType(undefined);
     setContractNumber(undefined);
+    setMusanedContractNumber(undefined);
     setExactEntryNumber(undefined);
     setRange([
       dayjs().subtract(1, 'month').startOf('day').toISOString(),
       dayjs().endOf('day').toISOString(),
     ]);
-    setCreatedRange([undefined, undefined]);
-    setUpdatedRange([undefined, undefined]);
     setCustomerId(undefined);
-    setAgentId(undefined);
-    setWorkerId(undefined);
     setEmployeeId(undefined);
-    setTotalDebitFrom(undefined);
-    setTotalDebitTo(undefined);
-    setTotalCreditFrom(undefined);
-    setTotalCreditTo(undefined);
+    setSortBy(JOURNAL_SORT_BY.Date);
+    setSortDirection(JOURNAL_SORT_DIRECTION.Desc);
     setPageNumber(1);
   };
 
@@ -296,9 +307,9 @@ export default function JournalEntriesPage() {
   const columns: ColumnsType<JournalEntryListItem> = [
     {
       title: '#',
-      key: 'index',
-      width: 52,
-      render: (_, __, idx) => (pageNumber - 1) * pageSize + idx + 1,
+      key: 'serialNumber',
+      width: 78,
+      render: (_, record, idx) => record.serialNumber ?? (pageNumber - 1) * pageSize + idx + 1,
     },
     {
       title: t('رقم القيد', 'Entry No.'),
@@ -359,8 +370,8 @@ export default function JournalEntriesPage() {
       key: 'sourceContractNumber',
       width: 120,
       render: (_, record) =>
-        record.sourceContractNumber ? (
-          <Tag color="geekblue">#{record.sourceContractNumber}</Tag>
+        record.contractNumber ?? record.sourceContractNumber ? (
+          <Tag color="geekblue">#{record.contractNumber ?? record.sourceContractNumber}</Tag>
         ) : (
           <span className={styles.muted}>—</span>
         ),
@@ -370,23 +381,38 @@ export default function JournalEntriesPage() {
       dataIndex: 'date',
       key: 'date',
       width: 110,
-      sorter: (a, b) => (a.date || '').localeCompare(b.date || ''),
       render: (v: string) => (v ? new Date(v).toLocaleDateString() : '—'),
+    },
+    {
+      title: t('ألى', 'Related To'),
+      key: 'relatedTo',
+      width: 160,
+      render: (_, record) => record.customerName || record.customerId || <span className={styles.muted}>—</span>,
+    },
+    {
+      title: t('الموظف', 'Employee'),
+      key: 'employee',
+      width: 150,
+      render: (_, record) => record.employeeName || record.employeeId || <span className={styles.muted}>—</span>,
     },
     {
       title: t('الوصف', 'Description'),
       dataIndex: 'description',
       key: 'description',
       width: 240,
-      ellipsis: { showTitle: false },
-      render: (v: string) => (
-        <Tooltip title={v || undefined} placement="topLeft">
-          <span className={styles.description}>{v || '—'}</span>
-        </Tooltip>
+      render: (v: string) => <span className={styles.description}>{v || '—'}</span>,
+    },
+    {
+      title: t('نوع القيد', 'Entry Type'),
+      dataIndex: 'source',
+      key: 'source',
+      width: 130,
+      render: (v: JournalEntrySource) => (
+        <span className={styles.muted}>{getSourceLabel(v, isAr)}</span>
       ),
     },
     {
-      title: t('النوع', 'Type'),
+      title: t('نوع التقييد', 'Restriction Type'),
       dataIndex: 'restrictionTypeId',
       key: 'restrictionTypeId',
       width: 140,
@@ -403,7 +429,6 @@ export default function JournalEntriesPage() {
       key: 'totalDebit',
       width: 120,
       align: 'right',
-      sorter: (a, b) => a.totalDebit - b.totalDebit,
       render: (v: number) => <span className={styles.amount}>{v.toLocaleString()}</span>,
     },
     {
@@ -435,13 +460,11 @@ export default function JournalEntriesPage() {
         ),
     },
     {
-      title: t('المصدر', 'Source'),
-      dataIndex: 'source',
-      key: 'source',
-      width: 110,
-      render: (v: JournalEntrySource) => (
-        <span className={styles.muted}>{getSourceLabel(v, isAr)}</span>
-      ),
+      title: t('رقم مساند', 'Musaned #'),
+      dataIndex: 'musanedContractNumber',
+      key: 'musanedContractNumber',
+      width: 130,
+      render: (v: string | null) => v || <span className={styles.muted}>—</span>,
     },
     {
       title: t('إجراءات', 'Actions'),
@@ -657,26 +680,26 @@ export default function JournalEntriesPage() {
                 setPageNumber(1);
               }}
               placeholder={t('الحالة', 'Status')}
-              options={JOURNAL_STATUSES.map((s) => ({ value: s.value, label: isAr ? s.ar : s.en }))}
+              options={entryStatusOptions}
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('المصدر', 'Source')}</label>
+            <label className={styles.filterLabel}>{t('نوع القيد', 'Entry Type')}</label>
             <Select
               size="large"
               allowClear
               style={{ width: '100%' }}
-              value={source}
+              value={entryType}
               onChange={(v) => {
-                setSource(v);
+                setEntryType(v);
                 setPageNumber(1);
               }}
-              placeholder={t('المصدر', 'Source')}
-              options={JOURNAL_SOURCES.map((s) => ({ value: s.value, label: isAr ? s.ar : s.en }))}
+              placeholder={t('نوع القيد', 'Entry Type')}
+              options={entryTypeOptions}
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('التاريخ', 'Date')}</label>
+            <label className={styles.filterLabel}>{t('تاريخ الإنشاء', 'Created Date')}</label>
             <DateRangeFilter
               value={range}
               onChange={(v) => {
@@ -704,6 +727,20 @@ export default function JournalEntriesPage() {
             />
           </Col>
           <Col xs={24} md={6}>
+            <label className={styles.filterLabel}>{t('رقم العقد في مساند', 'Musaned Contract No.')}</label>
+            <Input
+              allowClear
+              size="large"
+              style={{ width: '100%' }}
+              value={musanedContractNumber}
+              onChange={(e) => {
+                setMusanedContractNumber(e.target.value || undefined);
+                setPageNumber(1);
+              }}
+              placeholder={t('رقم العقد في مساند', 'Musaned Contract No.')}
+            />
+          </Col>
+          <Col xs={24} md={6}>
             <label className={styles.filterLabel}>{t('رقم القيد', 'Entry No.')}</label>
             <Input
               allowClear
@@ -717,52 +754,23 @@ export default function JournalEntriesPage() {
               placeholder={t('رقم القيد', 'Entry No.')}
             />
           </Col>
-          {/* Reference-type filter (drives source navigation). Replaces the old
-              restriction-type filter, which the backend ignored (no such param). */}
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('نوع المرجع', 'Reference type')}</label>
+            <label className={styles.filterLabel}>{t('نوع العقد', 'Contract Type')}</label>
             <Select
               allowClear
               size="large"
               style={{ width: '100%' }}
-              value={referenceType}
+              value={contractType}
               onChange={(v) => {
-                setReferenceType(v);
+                setContractType(v);
                 setPageNumber(1);
               }}
-              placeholder={t('نوع المرجع', 'Reference type')}
-              options={JOURNAL_REFERENCE_TYPES.map((r) => ({
-                value: r.value,
-                label: isAr ? r.ar : r.en,
-              }))}
+              placeholder={t('نوع العقد', 'Contract Type')}
+              options={contractTypeOptions}
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('تاريخ الإنشاء', 'Created date')}</label>
-            <DateRangeFilter
-              value={createdRange}
-              onChange={(v) => {
-                setCreatedRange(v);
-                setPageNumber(1);
-              }}
-              placeholder={[t('تاريخ الإنشاء من', 'Created from'), t('تاريخ الإنشاء إلى', 'Created to')]}
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('تاريخ التعديل', 'Updated date')}</label>
-            <DateRangeFilter
-              value={updatedRange}
-              onChange={(v) => {
-                setUpdatedRange(v);
-                setPageNumber(1);
-              }}
-              placeholder={[t('تاريخ التعديل من', 'Updated from'), t('تاريخ التعديل إلى', 'Updated to')]}
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('العميل', 'Customer')}</label>
+            <label className={styles.filterLabel}>{t('ألى', 'Related To')}</label>
             <Select
               allowClear
               showSearch
@@ -774,7 +782,7 @@ export default function JournalEntriesPage() {
                 setCustomerId(v);
                 setPageNumber(1);
               }}
-              placeholder={t('العميل', 'Customer')}
+              placeholder={t('ألى', 'Related To')}
               options={(customers as any[]).map((c: any) => ({
                 value: c.id,
                 label: (isAr ? c.arabicName || c.englishName : c.englishName || c.arabicName) || String(c.id),
@@ -782,113 +790,49 @@ export default function JournalEntriesPage() {
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('الوكيل', 'Agent')}</label>
+            <label className={styles.filterLabel}>{t('الموظف', 'Employee')}</label>
             <Select
               allowClear
               showSearch
               optionFilterProp="label"
-              size="large"
-              style={{ width: '100%' }}
-              value={agentId}
-              onChange={(v) => {
-                setAgentId(v);
-                setPageNumber(1);
-              }}
-              placeholder={t('الوكيل', 'Agent')}
-              options={(agents as any[]).map((a: any) => ({
-                value: a.id,
-                label: (isAr ? a.agentNameAr || a.agentNameEn : a.agentNameEn || a.agentNameAr) || String(a.id),
-              }))}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('العاملة', 'Worker')}</label>
-            <Select
-              allowClear
-              showSearch
-              optionFilterProp="label"
-              size="large"
-              style={{ width: '100%' }}
-              value={workerId}
-              onChange={(v) => {
-                setWorkerId(v);
-                setPageNumber(1);
-              }}
-              placeholder={t('العاملة', 'Worker')}
-              options={(workers as any[]).map((w: any) => ({
-                value: w.id,
-                label: (isAr ? w.fullNameAr || w.fullNameEn : w.fullNameEn || w.fullNameAr) || String(w.id),
-              }))}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('معرف الموظف', 'Employee ID')}</label>
-            <Input
-              allowClear
               size="large"
               style={{ width: '100%' }}
               value={employeeId}
-              onChange={(e) => {
-                setEmployeeId(e.target.value || undefined);
+              onChange={(v) => {
+                setEmployeeId(v);
                 setPageNumber(1);
               }}
-              placeholder={t('معرف الموظف', 'Employee ID')}
+              placeholder={t('الموظف', 'Employee')}
+              options={(employees as any[]).map((e: any) => ({
+                value: String(e.id),
+                label: e.nameAr || e.nameEn || e.employeeName || String(e.id),
+              }))}
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('إجمالي المدين من', 'Total Debit From')}</label>
-            <InputNumber
+            <label className={styles.filterLabel}>{t('ترتيب حسب', 'Sort By')}</label>
+            <Select
               size="large"
-              min={0}
               style={{ width: '100%' }}
-              value={totalDebitFrom}
+              value={sortBy}
               onChange={(v) => {
-                setTotalDebitFrom(v ?? undefined);
+                setSortBy(v);
                 setPageNumber(1);
               }}
-              placeholder={t('إجمالي المدين من', 'Total Debit From')}
+              options={sortByOptions}
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('إجمالي المدين إلى', 'Total Debit To')}</label>
-            <InputNumber
+            <label className={styles.filterLabel}>{t('اتجاه الترتيب', 'Sort Direction')}</label>
+            <Select
               size="large"
-              min={0}
               style={{ width: '100%' }}
-              value={totalDebitTo}
+              value={sortDirection}
               onChange={(v) => {
-                setTotalDebitTo(v ?? undefined);
+                setSortDirection(v);
                 setPageNumber(1);
               }}
-              placeholder={t('إجمالي المدين إلى', 'Total Debit To')}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('إجمالي الدائن من', 'Total Credit From')}</label>
-            <InputNumber
-              size="large"
-              min={0}
-              style={{ width: '100%' }}
-              value={totalCreditFrom}
-              onChange={(v) => {
-                setTotalCreditFrom(v ?? undefined);
-                setPageNumber(1);
-              }}
-              placeholder={t('إجمالي الدائن من', 'Total Credit From')}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('إجمالي الدائن إلى', 'Total Credit To')}</label>
-            <InputNumber
-              size="large"
-              min={0}
-              style={{ width: '100%' }}
-              value={totalCreditTo}
-              onChange={(v) => {
-                setTotalCreditTo(v ?? undefined);
-                setPageNumber(1);
-              }}
-              placeholder={t('إجمالي الدائن إلى', 'Total Credit To')}
+              options={sortDirectionOptions}
             />
           </Col>
         </Row>

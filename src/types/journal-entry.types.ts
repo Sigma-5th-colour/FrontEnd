@@ -67,6 +67,34 @@ export interface EnumOption {
   en: string;
 }
 
+export interface JournalEntryLookupOption {
+  value: number;
+  name?: string | null;
+  nameAr?: string | null;
+  nameEn?: string | null;
+}
+
+export interface JournalEntryLookups {
+  entryStatuses: JournalEntryLookupOption[];
+  entryTypes: JournalEntryLookupOption[];
+  contractTypes: JournalEntryLookupOption[];
+  sortByOptions: JournalEntryLookupOption[];
+  sortDirections: JournalEntryLookupOption[];
+}
+
+export const JOURNAL_SORT_BY = {
+  Date: 0,
+  EntryNumber: 1,
+  ContractNumber: 2,
+  Status: 3,
+  SerialNumber: 4,
+} as const;
+
+export const JOURNAL_SORT_DIRECTION = {
+  Asc: 0,
+  Desc: 1,
+} as const;
+
 /** Status options for the filter dropdown (only the live/actionable values). */
 export const JOURNAL_STATUSES: EnumOption[] = [
   { value: JE_STATUS.Draft, ar: 'غير معمد', en: 'Draft' },
@@ -151,11 +179,16 @@ export function getReferenceTypeLabel(value: JournalReferenceType, isAr: boolean
 /** Row in GET /JournalEntries (data.items[] — JournalEntryDto). */
 export interface JournalEntryListItem {
   id: string;
+  /** Stable backend sequence number when available. */
+  serialNumber?: number | null;
   entryNumber: string;
   date: string;
   description: string;
+  notes?: string | null;
   status: JournalEntryStatus;
   source: JournalEntrySource;
+  /** Alias of source on the 2026-08 search DTO. */
+  entryType?: JournalEntrySource | null;
   /** Reference classification — see JE_REFERENCE_TYPE. Drives source navigation. */
   referenceType: JournalReferenceType;
   /** Primary id of the document that generated this entry (null for manual). */
@@ -166,10 +199,20 @@ export interface JournalEntryListItem {
   restrictionTypeId?: string | null;
   /** Source contract's human serial/contract number when returned by the API. */
   sourceContractNumber?: number | string | null;
+  contractNumber?: number | string | null;
+  musanedContractNumber?: string | null;
+  contractType?: number | null;
   customerId?: string | null;
+  customerName?: string | null;
   agentId?: string | null;
+  agentName?: string | null;
   workerId?: string | null;
+  workerName?: string | null;
   employeeId?: string | null;
+  employeeName?: string | null;
+  createdBy?: string | null;
+  createdDate?: string | null;
+  lines?: JournalEntryLineDetail[];
 }
 
 /** Line inside a journal entry detail (GET /JournalEntries/{id} → data.lines[]). */
@@ -186,8 +229,6 @@ export interface JournalEntryLineDetail {
 
 /** Full detail from GET /JournalEntries/{id}. */
 export interface JournalEntryDetail extends JournalEntryListItem {
-  createdBy?: string | null;
-  createdDate?: string | null;
   lines: JournalEntryLineDetail[];
 }
 
@@ -223,24 +264,34 @@ export interface JournalEntriesQuery {
   pageSize?: number;
   from?: string;
   to?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  createdDate?: string;
   /** Numeric status code (Status=1). */
   status?: JournalEntryStatus;
+  entryStatus?: JournalEntryStatus;
   /** Numeric source code (Source=10). */
   source?: JournalEntrySource;
+  entryType?: JournalEntrySource;
   /** Numeric reference-type code (ReferenceType=1). */
   referenceType?: JournalReferenceType;
   /** Filter by the generating document's id. */
   sourceId?: string;
   customerId?: string;
+  relatedToId?: string;
   agentId?: string;
   workerId?: string;
   employeeId?: string;
   /** Exact-match on the server-generated entry number (EntryNumber=JE-2026-0042). */
   entryNumber?: string;
+  entryNumberMatch?: number;
   /** Free-text server-side search (Search=…). */
   search?: string;
+  notes?: string;
   /** Filter by the source contract's sequential number (int, AND-ed with others). */
-  contractNumber?: number;
+  contractNumber?: number | string;
+  musanedContractNumber?: string;
+  contractType?: number;
   /** Branch scoping — filters journal entries by BranchId. */
   branchId?: string;
   includeSubBranches?: boolean;
@@ -254,7 +305,8 @@ export interface JournalEntriesQuery {
   /** Numeric amount bounds on the entry's total credit (NOT dates, despite the From/To naming). */
   totalCreditFrom?: number;
   totalCreditTo?: number;
-  sortBy?: string;
+  sortBy?: number | string;
+  sortDirection?: number;
   sortDescending?: boolean;
 }
 

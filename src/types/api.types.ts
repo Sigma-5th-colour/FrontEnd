@@ -1478,7 +1478,7 @@ export interface MediationContractPayment {
   id?: string | null;
   paymentDate?: string | null;
   amount: number;
-  /** PaymentMethodType enum 1-5 (see MEDIATION_PAYMENT_METHOD). */
+  /** PaymentMethodType enum 1-8 (see MEDIATION_PAYMENT_METHOD). */
   paymentMethod?: number | null;
   paymentMethodName?: string | null;
   referenceNumber?: string | null;
@@ -1504,10 +1504,10 @@ export interface MediationContractFinancialSummary {
 /** POST /api/Mediation/MediationContract/customer-payment — request body. */
 export interface CreateMediationContractPaymentDto {
   contractId: string;
-  amount: number;
+  amount?: number | null;
   /** ISO datetime string — optional/nullable. */
   paymentDate?: string | null;
-  /** PaymentMethodType enum 1-5 — optional/nullable. */
+  /** PaymentMethodType enum 1-8 — optional/nullable. */
   paymentMethod?: number | null;
   bankFees?: number | null;
   referenceNumber?: string | null;

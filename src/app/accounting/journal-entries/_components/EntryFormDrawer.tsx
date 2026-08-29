@@ -66,6 +66,8 @@ const EMPTY_LINES: LineField[] = [
   { debit: 0, credit: 0 },
 ];
 
+const CUSTOMERS_ACCOUNT_ID = '11111111-0000-0000-0000-000000000003';
+
 export function EntryFormDrawer({ open, mode, entryId, onClose }: EntryFormDrawerProps) {
   // language label helper (kept local; mirrors the platform t(ar,en) idiom)
   const t = (ar: string, en: string) => ar + ' / ' + en;
@@ -213,6 +215,15 @@ export function EntryFormDrawer({ open, mode, entryId, onClose }: EntryFormDrawe
     const b = sumLines(lines.map((l) => ({ debit: Number(l.debit) || 0, credit: Number(l.credit) || 0 })));
     if (!b.isBalanced)
       return t('القيد غير متوازن — يجب أن يتساوى المدين والدائن', 'Entry is unbalanced — debits must equal credits');
+    const usesCustomersAccount = lines.some(
+      (l) => String(l.accountId || '').toLowerCase() === CUSTOMERS_ACCOUNT_ID
+    );
+    if (usesCustomersAccount && !values.customerId) {
+      return t(
+        'يجب تحديد العميل عند استخدام حساب العملاء.',
+        'Customer is required when the Customers account is used.'
+      );
+    }
     return null;
   };
 

@@ -10,6 +10,7 @@ import {
   type JournalEntryDetail,
   type JournalEntryLineDetail,
   type JournalEntryInput,
+  type JournalEntryLookups,
 } from '@/types/journal-entry.types';
 
 /**
@@ -39,17 +40,30 @@ export class JournalEntryService {
     return Number.isFinite(n) ? n : 0;
   }
 
+  private static dateOnly(value: string | null | undefined): string | undefined {
+    if (!value) return undefined;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value).slice(0, 10) || undefined;
+    return date.toISOString().slice(0, 10);
+  }
+
   /** Map a raw list/detail summary into a clean JournalEntryListItem. */
   private static toListItem(raw: any): JournalEntryListItem {
     const totalDebit = this.num(raw?.totalDebit);
     const totalCredit = this.num(raw?.totalCredit);
     return {
       id: raw?.id,
+      serialNumber:
+        raw?.serialNumber != null && Number.isFinite(Number(raw.serialNumber))
+          ? Number(raw.serialNumber)
+          : null,
       entryNumber: raw?.entryNumber ?? '',
       date: raw?.date ?? '',
-      description: raw?.description ?? '',
+      description: raw?.description ?? raw?.notes ?? '',
+      notes: raw?.notes ?? raw?.description ?? null,
       status: normalizeStatus(raw?.status),
-      source: normalizeSource(raw?.source),
+      source: normalizeSource(raw?.source ?? raw?.entryType),
+      entryType: normalizeSource(raw?.entryType ?? raw?.source),
       referenceType: normalizeReferenceType(raw?.referenceType),
       sourceId: raw?.sourceId ?? null,
       totalDebit,
@@ -65,10 +79,25 @@ export class JournalEntryService {
         raw?.referenceContractNumber ??
         raw?.contractNo ??
         null,
-      customerId: raw?.customerId ?? null,
+      contractNumber:
+        raw?.contractNumber ??
+        raw?.sourceContractNumber ??
+        raw?.referenceContractNumber ??
+        raw?.contractNo ??
+        null,
+      musanedContractNumber: raw?.musanedContractNumber ?? null,
+      contractType: raw?.contractType ?? null,
+      customerId: raw?.customerId ?? raw?.relatedToId ?? null,
+      customerName: raw?.customerName ?? raw?.customerNameAr ?? raw?.customerNameEn ?? null,
       agentId: raw?.agentId ?? null,
+      agentName: raw?.agentName ?? raw?.agentNameAr ?? raw?.agentNameEn ?? null,
       workerId: raw?.workerId ?? null,
+      workerName: raw?.workerName ?? raw?.workerNameAr ?? raw?.workerNameEn ?? null,
       employeeId: raw?.employeeId ?? null,
+      employeeName: raw?.employeeName ?? raw?.employeeNameAr ?? raw?.employeeNameEn ?? null,
+      createdBy: raw?.createdBy ?? null,
+      createdDate: raw?.createdDate ?? null,
+      lines: this.asArray(raw?.lines ?? raw?.lines?.$values).map((l) => this.toLine(l)),
     };
   }
 
@@ -85,49 +114,62 @@ export class JournalEntryService {
 
   // ==================== Reads ====================
 
-  /** GET /JournalEntries — paginated + filtered list. */
+  private static toSearchBody(query: JournalEntriesQuery = {}) {
+    return {
+      entryNumber: query.entryNumber || null,
+      entryNumberMatch: query.entryNumberMatch ?? undefined,
+      createdDate: this.dateOnly(query.createdDate),
+      createdFrom: this.dateOnly(query.createdFrom ?? query.createdDateFrom ?? query.from),
+      createdTo: this.dateOnly(query.createdTo ?? query.createdDateTo ?? query.to),
+      employeeId: query.employeeId || null,
+      entryStatus: query.entryStatus ?? query.status ?? null,
+      contractNumber:
+        query.contractNumber != null && query.contractNumber !== ''
+          ? String(query.contractNumber)
+          : null,
+      musanedContractNumber: query.musanedContractNumber || null,
+      contractType: query.contractType ?? null,
+      entryType: query.entryType ?? query.source ?? null,
+      notes: query.notes ?? query.search ?? null,
+      relatedToId: query.relatedToId ?? query.customerId ?? null,
+      sortBy: typeof query.sortBy === 'number' ? query.sortBy : 0,
+      sortDirection:
+        query.sortDirection ??
+        (query.sortDescending === false ? 0 : 1),
+      pageNumber: query.pageNumber ?? 1,
+      pageSize: query.pageSize ?? 10,
+      branchId: query.branchId || null,
+      includeSubBranches: query.branchId ? query.includeSubBranches ?? true : true,
+    };
+  }
+
+  /** GET /JournalEntries/lookups — dropdown metadata for the search filters. */
+  static async getLookups(): Promise<JournalEntryLookups> {
+    const response = await api.get<any>(API_ENDPOINTS.JOURNAL_ENTRIES.LOOKUPS);
+    const data = this.unwrap<any>(response.data);
+    return {
+      entryStatuses: this.asArray(data?.entryStatuses),
+      entryTypes: this.asArray(data?.entryTypes),
+      contractTypes: this.asArray(data?.contractTypes),
+      sortByOptions: this.asArray(data?.sortByOptions),
+      sortDirections: this.asArray(data?.sortDirections),
+    };
+  }
+
+  /** POST /JournalEntries/search — paginated + filtered list. */
   static async getAll(query: JournalEntriesQuery = {}): Promise<JournalEntriesPage> {
-    // NOTE: status/source/referenceType are sent as NUMERIC codes. Verified live:
-    // `Source=System` (string) returned 0 rows, `Source=13` works. `RestrictionTypeId`
-    // is NOT a supported query param (ignored server-side) and is intentionally omitted.
-    const response = await api.get<any>(API_ENDPOINTS.JOURNAL_ENTRIES.GET_ALL, {
-      params: {
-        pageNumber: query.pageNumber ?? 1,
-        pageSize: query.pageSize ?? 10,
-        from: query.from || undefined,
-        to: query.to || undefined,
-        status: query.status ?? undefined,
-        source: query.source ?? undefined,
-        referenceType: query.referenceType ?? undefined,
-        sourceId: query.sourceId || undefined,
-        customerId: query.customerId || undefined,
-        agentId: query.agentId || undefined,
-        workerId: query.workerId || undefined,
-        employeeId: query.employeeId || undefined,
-        entryNumber: query.entryNumber || undefined,
-        search: query.search || undefined,
-        contractNumber: query.contractNumber || undefined,
-        branchId: query.branchId || undefined,
-        includeSubBranches: query.branchId ? query.includeSubBranches : undefined,
-        createdDateFrom: query.createdDateFrom || undefined,
-        createdDateTo: query.createdDateTo || undefined,
-        updatedDateFrom: query.updatedDateFrom || undefined,
-        updatedDateTo: query.updatedDateTo || undefined,
-        totalDebitFrom: query.totalDebitFrom ?? undefined,
-        totalDebitTo: query.totalDebitTo ?? undefined,
-        totalCreditFrom: query.totalCreditFrom ?? undefined,
-        totalCreditTo: query.totalCreditTo ?? undefined,
-        sortBy: query.sortBy || undefined,
-        sortDescending: query.sortDescending ?? undefined,
-      },
-    });
+    const requestedPageSize = query.pageSize ?? 10;
+    const response = await api.post<any>(
+      API_ENDPOINTS.JOURNAL_ENTRIES.SEARCH,
+      this.toSearchBody(query)
+    );
     const data = this.unwrap<any>(response.data);
     const rawItems = this.asArray(data?.items ?? data?.$values ?? data);
     return {
       items: rawItems.map((r) => this.toListItem(r)),
       totalCount: data?.totalCount ?? data?.total ?? rawItems.length,
       pageNumber: data?.pageNumber ?? query.pageNumber ?? 1,
-      pageSize: data?.pageSize ?? query.pageSize ?? 10,
+      pageSize: requestedPageSize,
     };
   }
 

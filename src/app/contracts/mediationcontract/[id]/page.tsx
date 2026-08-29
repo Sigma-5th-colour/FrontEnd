@@ -9,7 +9,7 @@
  * presentational): a modal form posting to the customer-payment endpoint.
  */
 import React, { useState } from 'react';
-import { Badge, Button, Modal, Form, InputNumber, DatePicker, Select, Input } from 'antd';
+import { Alert, Badge, Button, Modal, Form, InputNumber, DatePicker, Select, Input } from 'antd';
 import { DollarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/store/authStore';
@@ -19,12 +19,13 @@ import {
   useRecordMediationPayment,
 } from '@/hooks/api/useMediationContracts';
 import { useAvailableMediationWorkers } from '@/hooks/api/useWorkers';
+import { useGeneralVoucherPaymentMethods } from '@/hooks/api/useGeneralVouchers';
 import RecordDetailShell from '@/components/record-detail/RecordDetailShell';
 import MediationContractDetailView from '../_components/MediationContractDetailView';
-import { getStatusConfigFromName } from '../_lib/format';
+import { formatCurrency, getStatusConfigFromName } from '../_lib/format';
 import { MEDIATION_PAYMENT_METHOD, toSelectOptions } from '@/constants/enums';
 import type { CreateMediationContractPaymentDto, Worker } from '@/types/api.types';
-import { useAccountingActionGates, useContractActionGates } from '@/hooks/useActionPermissionGates';
+import { useContractActionGates } from '@/hooks/useActionPermissionGates';
 import {
   ExclamationCircleOutlined,
   IdcardOutlined,
@@ -42,11 +43,11 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
   const { id } = params;
   const language = useAuthStore((state) => state.language);
   const isRtl = language === 'ar';
-  const accountingGates = useAccountingActionGates();
   const contractGates = useContractActionGates();
 
   const { data: contract, isLoading, isError, error, refetch } = useMediationContract(id);
   const { recordPayment, isRecordingPayment } = useRecordMediationPayment();
+  const { data: paymentMethodLookups = [] } = useGeneralVoucherPaymentMethods();
   const {
     assignWorker,
     endWorkerService,
@@ -77,6 +78,23 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
     paymentMethod: isRtl ? 'طريقة الدفع' : 'Payment Method',
     referenceNumber: isRtl ? 'رقم المرجع' : 'Reference #',
     bankFees: isRtl ? 'رسوم بنكية' : 'Bank Fees',
+    contractValue: isRtl ? 'قيمة العقد' : 'Contract Value',
+    amountBeingPaid: isRtl ? 'المبلغ المسدد' : 'Amount Being Paid',
+    paymentMethodFee: isRtl ? 'رسوم طريقة الدفع' : 'Payment Method Fee',
+    totalAmount: isRtl ? 'الإجمالي' : 'Total Amount',
+    previouslyPaid: isRtl ? 'المدفوع سابقاً' : 'Previously Paid',
+    outstandingBalance: isRtl ? 'الرصيد المتبقي' : 'Outstanding Balance',
+    afterPaymentBalance: isRtl ? 'المتبقي بعد الدفعة' : 'Remaining After Payment',
+    partialPaymentNotice: isRtl
+      ? 'سيبقى العقد مدفوعاً جزئياً حتى تتم تسوية كامل المبلغ المتبقي.'
+      : 'The contract will remain partially paid until the full outstanding amount is settled.',
+    autoAmountHint: isRtl
+      ? 'تم تعبئة المبلغ المتبقي تلقائياً ويمكن تعديله للدفعات الجزئية. تركه فارغاً يسدد الرصيد المتبقي.'
+      : 'The outstanding balance was filled automatically and can be edited for partial payments. Leaving it empty pays the remaining balance.',
+    amountPositive: isRtl ? 'مبلغ الدفعة غير صالح' : 'Invalid payment amount',
+    amountTooLarge: isRtl ? 'لا يمكن أن يتجاوز المبلغ الرصيد المتبقي' : 'Amount cannot exceed the outstanding balance',
+    feeTooLarge: isRtl ? 'رسوم طريقة الدفع تتجاوز مبلغ الدفعة' : 'Payment fee exceeds the payment amount',
+    noOutstandingBalance: isRtl ? 'لا يوجد رصيد متبقٍ للسداد' : 'No outstanding balance remains',
     notes: isRtl ? 'ملاحظات' : 'Notes',
     assignWorker: isRtl ? 'إسناد عامل جديد' : 'Assign New Worker',
     endWorkerService: isRtl ? 'إنهاء خدمة العامل' : 'End Worker Service',
@@ -97,21 +115,80 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
 
   const notFound = isError && isNotFoundError(error);
   const genericError = isError && !notFound;
+  const watchedAmount = Form.useWatch('amount', paymentForm);
+  const watchedPaymentMethod = Form.useWatch('paymentMethod', paymentForm);
+  const watchedBankFees = Form.useWatch('bankFees', paymentForm);
+
+  const contractValue =
+    contract?.financialSummary?.totalContractValue ??
+    contract?.totalCost ??
+    0;
+  const previouslyPaid =
+    contract?.financialSummary?.totalPaid ??
+    contract?.totalPaid ??
+    0;
+  const outstandingBalance =
+    contract?.financialSummary?.remainingAmount ??
+    contract?.remainingAmount ??
+    Math.max(contractValue - previouslyPaid, 0);
+  const rawPaymentAmount = Number(watchedAmount);
+  const amountBeingPaid =
+    watchedAmount == null || rawPaymentAmount === 0
+      ? outstandingBalance
+      : Number.isFinite(rawPaymentAmount)
+      ? rawPaymentAmount
+      : 0;
+  const selectedPaymentMethod = Number(watchedPaymentMethod ?? 1);
+  const defaultMusanedFee =
+    selectedPaymentMethod === 6
+      ? Math.round(contractValue * 0.024 * 100) / 100
+      : selectedPaymentMethod === 7
+      ? 517.5
+      : selectedPaymentMethod === 8
+      ? 125
+      : 0;
+  const paymentMethodFee =
+    watchedBankFees != null && Number.isFinite(Number(watchedBankFees))
+      ? Number(watchedBankFees)
+      : defaultMusanedFee;
+  const totalAmount = Math.round((amountBeingPaid + paymentMethodFee) * 100) / 100;
+  const remainingAfterPayment = Math.max(outstandingBalance - amountBeingPaid, 0);
+  const selectedMethodLabel =
+    paymentMethodLookups.find((m) => Number(m.value) === selectedPaymentMethod)?.[
+      isRtl ? 'nameAr' : 'nameEn'
+    ] ||
+    toSelectOptions([...MEDIATION_PAYMENT_METHOD], language).find((m) => Number(m.value) === selectedPaymentMethod)?.label ||
+    '-';
+  const paymentMethodOptions = paymentMethodLookups.length
+    ? paymentMethodLookups.map((method) => ({
+        value: Number(method.value),
+        label:
+          (isRtl ? method.nameAr : method.nameEn) ||
+          method.nameAr ||
+          method.nameEn ||
+          String(method.value),
+      }))
+    : toSelectOptions([...MEDIATION_PAYMENT_METHOD], language);
+  const fmtCurrency = (amount: number | null | undefined) => formatCurrency(amount, language);
 
   const openPaymentModal = () => {
-    if (!accountingGates.canCreate) return;
+    if (!contractGates.canUpdate) return;
     paymentForm.resetFields();
-    paymentForm.setFieldsValue({ paymentDate: dayjs() });
+    paymentForm.setFieldsValue({
+      amount: outstandingBalance > 0 ? outstandingBalance : undefined,
+      paymentDate: dayjs(),
+      paymentMethod: 1,
+    });
     setShowPaymentModal(true);
   };
 
   const handleRecordPayment = async () => {
-    if (!accountingGates.canCreate) return;
+    if (!contractGates.canUpdate) return;
     try {
       const values = await paymentForm.validateFields();
       const payload: CreateMediationContractPaymentDto = {
         contractId: id,
-        amount: values.amount,
+        amount: values.amount ?? null,
         paymentDate: values.paymentDate ? new Date(values.paymentDate).toISOString() : null,
         paymentMethod: values.paymentMethod ?? null,
         bankFees: values.bankFees ?? null,
@@ -175,7 +252,8 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
     }
   };
 
-  const canRecordPayment = !!contract && contract.paymentStatusCode !== 2 && accountingGates.canCreate;
+  const canRecordPayment =
+    !!contract && contract.paymentStatusCode !== 2 && outstandingBalance > 0 && contractGates.canUpdate;
 
   return (
     <>
@@ -227,12 +305,12 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
       {/* ========== RECORD PAYMENT MODAL ========== */}
       <Modal
         title={t.recordPayment}
-        open={showPaymentModal && accountingGates.canCreate}
+        open={showPaymentModal && contractGates.canUpdate}
         onCancel={() => {
           setShowPaymentModal(false);
           paymentForm.resetFields();
         }}
-        onOk={accountingGates.canCreate ? handleRecordPayment : undefined}
+        onOk={contractGates.canUpdate ? handleRecordPayment : undefined}
         okText={t.save}
         cancelText={t.cancel}
         confirmLoading={isRecordingPayment}
@@ -242,12 +320,34 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
             name="amount"
             label={t.amount}
             rules={[
-              { required: true, message: t.required },
-              { type: 'number', min: 0.01, message: t.required },
+              {
+                validator: (_, value) => {
+                  const amount = Number(value);
+                  if (outstandingBalance <= 0) {
+                    return Promise.reject(new Error(t.noOutstandingBalance));
+                  }
+                  if (value == null || amount === 0) {
+                    return paymentMethodFee > outstandingBalance
+                      ? Promise.reject(new Error(t.feeTooLarge))
+                      : Promise.resolve();
+                  }
+                  if (!Number.isFinite(amount) || amount < 0) {
+                    return Promise.reject(new Error(t.amountPositive));
+                  }
+                  if (outstandingBalance > 0 && amount > outstandingBalance) {
+                    return Promise.reject(new Error(t.amountTooLarge));
+                  }
+                  if (paymentMethodFee > amount) {
+                    return Promise.reject(new Error(t.feeTooLarge));
+                  }
+                  return Promise.resolve();
+                },
+              },
             ]}
           >
-            <InputNumber style={{ width: '100%' }} min={0.01} precision={2} />
+            <InputNumber style={{ width: '100%' }} min={0} max={outstandingBalance || undefined} precision={2} />
           </Form.Item>
+          <Alert type="info" showIcon message={t.autoAmountHint} style={{ marginBlockEnd: 12 }} />
           <Form.Item name="paymentDate" label={t.paymentDate}>
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
@@ -255,15 +355,59 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
             <Select
               allowClear
               placeholder={t.paymentMethod}
-              options={toSelectOptions([...MEDIATION_PAYMENT_METHOD], language)}
+              options={paymentMethodOptions}
             />
           </Form.Item>
           <Form.Item name="referenceNumber" label={t.referenceNumber}>
             <Input maxLength={150} />
           </Form.Item>
           <Form.Item name="bankFees" label={t.bankFees}>
-            <InputNumber style={{ width: '100%' }} min={0} />
+            <InputNumber style={{ width: '100%' }} min={0} precision={2} />
           </Form.Item>
+          <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12, marginBlockEnd: 16, background: '#fafafa' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.contractValue}</span>
+              <strong>{fmtCurrency(contractValue)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.previouslyPaid}</span>
+              <strong>{fmtCurrency(previouslyPaid)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.outstandingBalance}</span>
+              <strong>{fmtCurrency(outstandingBalance)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.paymentMethod}</span>
+              <strong>{selectedMethodLabel}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.amountBeingPaid}</span>
+              <strong>{fmtCurrency(amountBeingPaid)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.paymentMethodFee}</span>
+              <strong>{fmtCurrency(paymentMethodFee)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBlockEnd: 6 }}>
+              <span>{t.totalAmount}</span>
+              <strong>{fmtCurrency(totalAmount)}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <span>{t.afterPaymentBalance}</span>
+              <strong style={{ color: remainingAfterPayment > 0 ? '#fa8c16' : '#52c41a' }}>
+                {fmtCurrency(remainingAfterPayment)}
+              </strong>
+            </div>
+            {remainingAfterPayment > 0 && (
+              <Alert
+                type="warning"
+                showIcon
+                message={t.partialPaymentNotice}
+                style={{ marginBlockStart: 12 }}
+              />
+            )}
+          </div>
           <Form.Item name="notes" label={t.notes}>
             <Input.TextArea rows={3} maxLength={1000} />
           </Form.Item>

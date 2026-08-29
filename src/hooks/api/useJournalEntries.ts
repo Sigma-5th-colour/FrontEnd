@@ -56,6 +56,10 @@ export function useJournalEntries(query: JournalEntriesQuery) {
       query.workerId ?? '',
       query.employeeId ?? '',
       query.contractNumber ?? '',
+      query.musanedContractNumber ?? '',
+      query.contractType ?? '',
+      query.entryType ?? '',
+      query.notes ?? '',
       query.branchId ?? '',
       query.includeSubBranches ?? '',
       query.createdDateFrom ?? '',
@@ -66,6 +70,8 @@ export function useJournalEntries(query: JournalEntriesQuery) {
       query.totalDebitTo ?? '',
       query.totalCreditFrom ?? '',
       query.totalCreditTo ?? '',
+      query.sortBy ?? '',
+      query.sortDirection ?? '',
     ],
     queryFn: () => JournalEntryService.getAll(query),
     placeholderData: (previous) => previous,
@@ -79,6 +85,14 @@ export function useJournalEntries(query: JournalEntriesQuery) {
     error: result.error,
     refetch: result.refetch,
   };
+}
+
+export function useJournalEntryLookups() {
+  return useQuery({
+    queryKey: [JOURNAL_ENTRIES_KEY, 'lookups'],
+    queryFn: () => JournalEntryService.getLookups(),
+    staleTime: Infinity,
+  });
 }
 
 /** Single journal entry detail (lazy — only fetched when `id` is set). */
