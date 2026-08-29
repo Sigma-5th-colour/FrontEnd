@@ -259,7 +259,7 @@ export function EntryDetailDrawer({ open, entryId, onClose, onEdit }: EntryDetai
                   : '—'
               )}
               {fact(t('رقم مساند', 'Musaned #'), entry.musanedContractNumber || '—')}
-              {fact(t('ألى', 'Related To'), entry.customerName || entry.customerId || '—')}
+              {fact(t('الجهة المرتبطة', 'Related To'), entry.customerName || entry.customerId || '—')}
               {fact(t('الوكيل', 'Agent'), entry.agentName || entry.agentId || '—')}
               {fact(t('العاملة', 'Worker'), entry.workerName || entry.workerId || '—')}
               {fact(t('الموظف', 'Employee'), entry.employeeName || entry.employeeId || '—')}

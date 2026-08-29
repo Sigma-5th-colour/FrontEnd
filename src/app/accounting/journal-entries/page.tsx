@@ -526,7 +526,7 @@ export default function JournalEntriesPage() {
             <div className={styles.entryInfoGrid}>
               {renderInfoItem(t('رقم العقد', 'Contract No.'), contractDisplay(record))}
               {renderInfoItem(t('رقم مساند', 'Musaned #'), display(record.musanedContractNumber))}
-              {renderInfoItem(t('ألى', 'Related To'), display(record.customerName || record.customerId))}
+              {renderInfoItem(t('الجهة المرتبطة', 'Related To'), display(record.customerName || record.customerId))}
               {renderInfoItem(t('الوكيل', 'Agent'), display(record.agentName || record.agentId))}
               {renderInfoItem(t('العاملة', 'Worker'), display(record.workerName || record.workerId))}
               {renderInfoItem(t('الموظف', 'Employee'), display(record.employeeName || record.employeeId))}
@@ -771,7 +771,7 @@ export default function JournalEntriesPage() {
             />
           </Col>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('ألى', 'Related To')}</label>
+            <label className={styles.filterLabel}>{t('الجهة المرتبطة', 'Related To')}</label>
             <Select
               allowClear
               showSearch
@@ -783,7 +783,7 @@ export default function JournalEntriesPage() {
                 setCustomerId(v);
                 setPageNumber(1);
               }}
-              placeholder={t('ألى', 'Related To')}
+              placeholder={t('الجهة المرتبطة', 'Related To')}
               options={(customers as any[]).map((c: any) => ({
                 value: c.id,
                 label: (isAr ? c.arabicName || c.englishName : c.englishName || c.arabicName) || String(c.id),
