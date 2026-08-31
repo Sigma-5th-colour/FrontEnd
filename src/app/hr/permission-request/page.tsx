@@ -48,7 +48,7 @@ export default function PermissionRequestPage() {
   };
 
   const handleSubmit = async () => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     try {
       const values = await form.validateFields();
 
@@ -81,7 +81,7 @@ export default function PermissionRequestPage() {
     }
   };
 
-  if (hrGates.isReady && !hrGates.canCreate) {
+  if (hrGates.isReady && !hrGates.canSubmitRequest) {
     return <AccessDenied />;
   }
 

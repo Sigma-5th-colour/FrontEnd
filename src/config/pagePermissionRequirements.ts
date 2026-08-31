@@ -26,6 +26,8 @@ export const HR_MANAGE_PERMISSIONS = [
   APP_PERMISSIONS.HR_FULL_ACCESS,
 ] as const;
 
+const HR_SELF_SERVICE_PERMISSIONS = [] as const;
+
 export const ADMIN_MANAGE_PERMISSIONS = [
   APP_PERMISSIONS.ADMINISTRATION_MANAGE,
   APP_PERMISSIONS.SYSTEM_FULL_ACCESS,
@@ -58,15 +60,15 @@ export const PAGE_PERMISSION_REQUIREMENTS: Record<string, readonly string[]> = {
   '/hr/positions': HR_READ_PERMISSIONS,
   '/hr/departments': HR_READ_PERMISSIONS,
   '/hr/attendance': HR_READ_PERMISSIONS,
-  '/hr/leave': HR_READ_PERMISSIONS,
+  '/hr/leave': HR_SELF_SERVICE_PERMISSIONS,
   '/hr/leave-types': HR_READ_PERMISSIONS,
   '/hr/payroll': HR_READ_PERMISSIONS,
   '/hr/admin-users': ADMIN_MANAGE_PERMISSIONS,
-  '/hr/permission-request': HR_READ_PERMISSIONS,
+  '/hr/permission-request': HR_SELF_SERVICE_PERMISSIONS,
   '/hr/permission-requests': HR_READ_PERMISSIONS,
-  '/hr/resignation-request': HR_READ_PERMISSIONS,
+  '/hr/resignation-request': HR_SELF_SERVICE_PERMISSIONS,
   '/hr/resignation-requests': HR_READ_PERMISSIONS,
-  '/hr/custody-request': HR_READ_PERMISSIONS,
+  '/hr/custody-request': HR_SELF_SERVICE_PERMISSIONS,
   '/hr/custody-requests': HR_READ_PERMISSIONS,
 
   '/accounting/journal-entries': ACCOUNTING_READ_PERMISSIONS,
@@ -130,5 +132,5 @@ export function canAccessPageWithPermissionRequirements(
   if (isAdminRole([...roles])) return true;
   if (!canAccessPage(pageKey, [...roles], matrix)) return false;
   const requiredPermissions = PAGE_PERMISSION_REQUIREMENTS[pageKey];
-  return !requiredPermissions || hasPermission(permissions, requiredPermissions);
+  return !requiredPermissions?.length || hasPermission(permissions, requiredPermissions);
 }

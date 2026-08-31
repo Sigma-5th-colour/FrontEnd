@@ -3,6 +3,7 @@ import type { PermissionMatrix } from './pagePermissions.config.ts';
 export const STAFF_ROLES = [
   'Admin',
   'Owner',
+  'Employee',
   'CustomerServiceEmployee',
   'CustomerServiceCallCenter',
   'SalesEmployee',
@@ -24,6 +25,13 @@ export const FOLLOW_UP_ROLES = ['FollowUpEmployee'] as const;
 export const AGENT_ROLES = ['Agent'] as const;
 export const ACCOUNTING_ROLES = ['AccountingEmployee'] as const;
 export const HR_ROLES = ['HREmployee'] as const;
+export const EMPLOYEE_SELF_SERVICE_ROLES = [
+  'Employee',
+  ...CUSTOMER_SERVICE_ROLES,
+  ...FOLLOW_UP_ROLES,
+  ...ACCOUNTING_ROLES,
+  ...HR_ROLES,
+] as const;
 
 const allStaff = [...STAFF_ROLES];
 const customerService = [...CUSTOMER_SERVICE_ROLES];
@@ -31,6 +39,7 @@ const customerServiceAndFollowUp = [...CUSTOMER_SERVICE_ROLES, ...FOLLOW_UP_ROLE
 const customerServiceAndAgent = [...CUSTOMER_SERVICE_ROLES, ...AGENT_ROLES];
 const accounting = [...ACCOUNTING_ROLES];
 const hr = [...HR_ROLES];
+const hrSelfService = [...EMPLOYEE_SELF_SERVICE_ROLES];
 
 export const DEFAULT_ROLE_PAGE_MATRIX: PermissionMatrix = {
   '/dashboard': allStaff,
@@ -68,15 +77,15 @@ export const DEFAULT_ROLE_PAGE_MATRIX: PermissionMatrix = {
   '/hr/positions': hr,
   '/hr/departments': hr,
   '/hr/attendance': hr,
-  '/hr/leave': hr,
+  '/hr/leave': hrSelfService,
   '/hr/leave-types': hr,
   '/hr/payroll': hr,
   '/hr/admin-users': [],
-  '/hr/permission-request': hr,
+  '/hr/permission-request': hrSelfService,
   '/hr/permission-requests': hr,
-  '/hr/resignation-request': hr,
+  '/hr/resignation-request': hrSelfService,
   '/hr/resignation-requests': hr,
-  '/hr/custody-request': hr,
+  '/hr/custody-request': hrSelfService,
   '/hr/custody-requests': hr,
 
   '/accounting/journal-entries': accounting,

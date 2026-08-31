@@ -8,6 +8,25 @@ import {
   HR_MANAGE_PERMISSIONS,
 } from './pagePermissionRequirements.ts';
 
+const HR_SELF_SERVICE_ROLE_NAMES = new Set(
+  [
+    'Employee',
+    'CustomerServiceEmployee',
+    'CustomerServiceCallCenter',
+    'SalesEmployee',
+    'CustomerServiceSales',
+    'FollowUpEmployee',
+    'AccountingEmployee',
+    'HREmployee',
+  ].map((role) => role.toLowerCase())
+);
+
+function hasHrSelfServiceRole(userAccess: PermissionSubject): boolean {
+  if (!userAccess || Array.isArray(userAccess)) return false;
+  const claims = userAccess as { roles?: readonly string[] | null };
+  return (claims.roles ?? []).some((role) => HR_SELF_SERVICE_ROLE_NAMES.has(role.toLowerCase()));
+}
+
 export const CONTRACT_ACTION_PERMISSIONS = {
   create: [APP_PERMISSIONS.CONTRACTS_CREATE],
   update: [APP_PERMISSIONS.CONTRACTS_UPDATE],
@@ -42,8 +61,10 @@ export function getAccountingActionGates(userAccess: PermissionSubject) {
 
 export function getHrActionGates(userAccess: PermissionSubject) {
   const canManage = hasAccessPermission(userAccess, HR_MANAGE_PERMISSIONS);
+  const canSubmitRequest = canManage || hasHrSelfServiceRole(userAccess);
   return {
     canCreate: canManage,
+    canSubmitRequest,
     canUpdate: canManage,
     canDelete: canManage,
     canApprove: canManage,

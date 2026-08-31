@@ -57,6 +57,7 @@ test('action gates: accounting and HR read-only permissions cannot mutate', () =
   assert.equal(getAccountingActionGates([APP_PERMISSIONS.ACCOUNTING_FULL_ACCESS]).canCreate, true);
 
   assert.equal(getHrActionGates([APP_PERMISSIONS.HR_VIEW]).canManage, false);
+  assert.equal(getHrActionGates([APP_PERMISSIONS.HR_VIEW]).canSubmitRequest, false);
   assert.equal(getHrActionGates([APP_PERMISSIONS.HR_MANAGE]).canApprove, true);
   assert.equal(getHrActionGates([APP_PERMISSIONS.HR_FULL_ACCESS]).canResetPassword, true);
 });
@@ -123,6 +124,16 @@ test('read-only users cannot access representative nested mutation controls', ()
   assert.equal(getAccountingActionGates([APP_PERMISSIONS.ACCOUNTING_VIEW]).canDelete, false);
   assert.equal(getHrActionGates([APP_PERMISSIONS.HR_VIEW]).canReject, false);
   assert.equal(getHrActionGates([APP_PERMISSIONS.HR_VIEW]).canResetPassword, false);
+});
+
+test('HR self-service: employees can submit requests without HR manage permissions', () => {
+  const gates = getHrActionGates({ roles: ['Employee'], permissions: [] });
+
+  assert.equal(gates.canSubmitRequest, true);
+  assert.equal(gates.canCreate, false);
+  assert.equal(gates.canManage, false);
+  assert.equal(gates.canApprove, false);
+  assert.equal(gates.canReject, false);
 });
 
 test('/me success: empty arrays override JWT fallback claims', () => {
@@ -404,6 +415,47 @@ test('page visibility: role alone is not enough when the page requires permissio
       DEFAULT_ROLE_PAGE_MATRIX
     ),
     true
+  );
+});
+
+test('page visibility: employees can access HR request pages only', () => {
+  const subject = { roles: ['Employee'], permissions: [] };
+  const selfServicePages = [
+    '/hr/leave',
+    '/hr/permission-request',
+    '/hr/resignation-request',
+    '/hr/custody-request',
+  ];
+
+  for (const page of selfServicePages) {
+    assert.equal(
+      canAccessPageWithPermissionRequirements(
+        page,
+        subject.roles,
+        subject.permissions,
+        DEFAULT_ROLE_PAGE_MATRIX
+      ),
+      true
+    );
+  }
+
+  assert.equal(
+    canAccessPageWithPermissionRequirements(
+      '/hr/leave-types',
+      subject.roles,
+      subject.permissions,
+      DEFAULT_ROLE_PAGE_MATRIX
+    ),
+    false
+  );
+  assert.equal(
+    canAccessPageWithPermissionRequirements(
+      '/hr/permission-requests',
+      subject.roles,
+      subject.permissions,
+      DEFAULT_ROLE_PAGE_MATRIX
+    ),
+    false
   );
 });
 

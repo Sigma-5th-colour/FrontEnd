@@ -115,7 +115,7 @@ export default function HRLeavePage() {
   }, [leaveRequests, statusFilter, searchText, employeeNameById, leaveTypeNameById]);
 
   const handleCreate = async () => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     try {
       const values = await form.validateFields();
       const dto: CreateLeaveRequestDto = {
@@ -252,7 +252,7 @@ export default function HRLeavePage() {
           <CalendarOutlined style={{ fontSize: 22, color: '#1677ff' }} />
           <Title level={4} style={{ margin: 0 }}>طلبات الإجازات</Title>
         </Space>
-        {hrGates.canCreate && (
+        {hrGates.canSubmitRequest && (
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -341,7 +341,7 @@ export default function HRLeavePage() {
 
       {/* Create Leave Modal */}
       <Modal
-        open={createModalOpen && hrGates.canCreate}
+        open={createModalOpen && hrGates.canSubmitRequest}
         title="طلب إجازة جديدة"
         onCancel={() => {
           setCreateModalOpen(false);

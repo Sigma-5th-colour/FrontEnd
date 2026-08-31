@@ -62,7 +62,7 @@ export default function CustodyRequestPage() {
   };
 
   const addItem = () => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     rowCounter.current += 1;
     setItems((prev) => [
       ...prev,
@@ -78,19 +78,19 @@ export default function CustodyRequestPage() {
   };
 
   const removeItem = (key: number) => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     setItems((prev) => prev.filter((r) => r._key !== key));
   };
 
   const updateItem = (key: number, field: keyof CustodyItemDto, value: any) => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     setItems((prev) =>
       prev.map((r) => (r._key === key ? { ...r, [field]: value } : r))
     );
   };
 
   const handleAddType = async () => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canManage) return;
     try {
       const values = await typeForm.validateFields();
       await createCustodyType(values as CreateCustodyTypeDto);
@@ -104,7 +104,7 @@ export default function CustodyRequestPage() {
   };
 
   const handleSubmit = async () => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     try {
       const values = await form.validateFields();
 
@@ -162,7 +162,7 @@ export default function CustodyRequestPage() {
             <>
               {menu}
               <Divider style={{ margin: '4px 0' }} />
-              {hrGates.canCreate && (
+              {hrGates.canManage && (
                 <Button
                   type="link"
                   icon={<PlusOutlined />}
@@ -238,7 +238,7 @@ export default function CustodyRequestPage() {
     },
   ];
 
-  if (hrGates.isReady && !hrGates.canCreate) {
+  if (hrGates.isReady && !hrGates.canSubmitRequest) {
     return <AccessDenied />;
   }
 
@@ -363,7 +363,7 @@ export default function CustodyRequestPage() {
 
       {/* Add Custody Type Modal */}
       <Modal
-        open={addTypeModalOpen && hrGates.canCreate}
+        open={addTypeModalOpen && hrGates.canManage}
         title={
           <Space>
             <SettingOutlined />

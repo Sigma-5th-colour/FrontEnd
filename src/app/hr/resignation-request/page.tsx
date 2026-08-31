@@ -37,7 +37,7 @@ export default function ResignationRequestPage() {
   };
 
   const handleSubmit = async () => {
-    if (!hrGates.canCreate) return;
+    if (!hrGates.canSubmitRequest) return;
     try {
       const values = await form.validateFields();
 
@@ -58,7 +58,7 @@ export default function ResignationRequestPage() {
     }
   };
 
-  if (hrGates.isReady && !hrGates.canCreate) {
+  if (hrGates.isReady && !hrGates.canSubmitRequest) {
     return <AccessDenied />;
   }
 
