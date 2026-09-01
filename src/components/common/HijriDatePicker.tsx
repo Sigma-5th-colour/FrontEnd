@@ -1,37 +1,51 @@
 /**
- * DOB-style date picker that displays the Hijri (Umm al-Qura) date — both in
- * the field text and as the primary number in the calendar grid — while the
- * underlying value stays Gregorian ISO `YYYY-MM-DD`, exactly like the plain
- * `<Input type="date">` it replaces. String-in/string-out so it drops into a
- * `Form.Item` with no payload changes at the call site.
+ * Hijri-only DOB picker. The visible control uses Umm al-Qura day/month/year
+ * values, while Form.Item still receives the Gregorian ISO date expected by
+ * the current customer API.
  */
 'use client';
 
-import { DatePicker } from 'antd';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Select, Space } from 'antd';
 import type { SelectProps } from 'antd/es/select';
-import dayjs, { type Dayjs } from 'dayjs';
 import { useAuthStore } from '@/store/authStore';
-import { formatHijri, toHijriParts } from '@/utils/hijri';
+import {
+  getHijriMonthLength,
+  getHijriMonthName,
+  hijriToGregorianIso,
+  toHijriParts,
+  type HijriParts,
+} from '@/utils/hijri';
 
 export interface HijriDatePickerProps {
   /** Forwarded so a Form.Item's <label htmlFor> resolves to the actual control. */
   id?: string;
-  /** ISO date string, e.g. "1990-05-12". Gregorian — only the display is Hijri. */
+  /** ISO date string, e.g. "1990-05-12". Gregorian value for the existing API. */
   value?: string | null;
   onChange?: (value?: string) => void;
   placeholder?: string;
   disabled?: boolean;
   allowClear?: boolean;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
   className?: string;
   size?: SelectProps['size'];
+}
+
+const MIN_HIJRI_BIRTH_YEAR = 1300;
+
+function isoToHijriParts(value?: string | null): Partial<HijriParts> {
+  if (!value) return {};
+  return toHijriParts(new Date(`${value.slice(0, 10)}T12:00:00`)) ?? {};
+}
+
+function isComplete(parts: Partial<HijriParts>): parts is HijriParts {
+  return Boolean(parts.year && parts.month && parts.day);
 }
 
 export default function HijriDatePicker({
   id,
   value,
   onChange,
-  placeholder,
   disabled,
   allowClear = true,
   style,
@@ -40,34 +54,100 @@ export default function HijriDatePicker({
 }: HijriDatePickerProps) {
   const language = useAuthStore((state) => state.language);
   const lang: 'ar' | 'en' = language === 'ar' ? 'ar' : 'en';
-  const parsed: Dayjs | null = value ? dayjs(value.slice(0, 10)) : null;
+  const internallyChanging = useRef(false);
+  const [draft, setDraft] = useState<Partial<HijriParts>>(() => isoToHijriParts(value));
+  const currentHijriYear = toHijriParts(new Date())?.year ?? 1448;
+
+  useEffect(() => {
+    if (internallyChanging.current) {
+      internallyChanging.current = false;
+      return;
+    }
+    setDraft(isoToHijriParts(value));
+  }, [value]);
+
+  const labels = {
+    day: lang === 'ar' ? 'اليوم' : 'Day',
+    month: lang === 'ar' ? 'الشهر' : 'Month',
+    year: lang === 'ar' ? 'السنة' : 'Year',
+  };
+
+  const yearOptions = useMemo(
+    () =>
+      Array.from({ length: currentHijriYear - MIN_HIJRI_BIRTH_YEAR + 1 }, (_, index) => {
+        const year = currentHijriYear - index;
+        return { value: year, label: String(year) };
+      }),
+    [currentHijriYear],
+  );
+
+  const monthOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, index) => {
+        const month = index + 1;
+        return { value: month, label: getHijriMonthName(month, lang) };
+      }),
+    [lang],
+  );
+
+  const maxDay = draft.year && draft.month ? getHijriMonthLength(draft.year, draft.month) : 30;
+  const dayOptions = useMemo(
+    () => Array.from({ length: maxDay }, (_, index) => ({ value: index + 1, label: String(index + 1) })),
+    [maxDay],
+  );
+
+  const applyDraft = (nextDraft: Partial<HijriParts>) => {
+    const nextMaxDay =
+      nextDraft.year && nextDraft.month ? getHijriMonthLength(nextDraft.year, nextDraft.month) : 30;
+    const normalizedDraft =
+      nextDraft.day && nextDraft.day > nextMaxDay ? { ...nextDraft, day: undefined } : nextDraft;
+
+    internallyChanging.current = true;
+    setDraft(normalizedDraft);
+
+    if (!isComplete(normalizedDraft)) {
+      onChange?.(undefined);
+      return;
+    }
+
+    onChange?.(hijriToGregorianIso(normalizedDraft) ?? undefined);
+  };
+
+  const commonProps: Pick<SelectProps<number>, 'disabled' | 'allowClear' | 'size'> = {
+    disabled,
+    allowClear,
+    size,
+  };
 
   return (
-    <DatePicker
-      id={id}
-      value={parsed}
-      onChange={(v) => onChange?.(v ? v.format('YYYY-MM-DD') : undefined)}
-      placeholder={placeholder}
-      disabled={disabled}
-      allowClear={allowClear}
-      style={style ?? { width: '100%' }}
-      className={className}
-      size={size}
-      format={(v) => `${formatHijri(v.toDate(), lang)} (${v.format('YYYY-MM-DD')})`}
-      cellRender={(current, info) => {
-        if (info.type !== 'date' || !dayjs.isDayjs(current)) return info.originNode;
-        const parts = toHijriParts(current.toDate());
-        if (!parts) return info.originNode;
-        return (
-          <div
-            className="ant-picker-cell-inner"
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.15 }}
-          >
-            <span>{parts.day}</span>
-            <span style={{ fontSize: 10, opacity: 0.55 }}>{current.date()}</span>
-          </div>
-        );
-      }}
-    />
+    <Space.Compact block className={className} style={style ?? { width: '100%' }} direction="horizontal">
+      <Select
+        {...commonProps}
+        id={id}
+        value={draft.day}
+        options={dayOptions}
+        placeholder={labels.day}
+        onChange={(day) => applyDraft({ ...draft, day })}
+        style={{ width: '26%' }}
+      />
+      <Select
+        {...commonProps}
+        value={draft.month}
+        options={monthOptions}
+        placeholder={labels.month}
+        onChange={(month) => applyDraft({ ...draft, month })}
+        style={{ width: '40%' }}
+      />
+      <Select
+        {...commonProps}
+        value={draft.year}
+        options={yearOptions}
+        placeholder={labels.year}
+        onChange={(year) => applyDraft({ ...draft, year })}
+        style={{ width: '34%' }}
+        showSearch
+        optionFilterProp="label"
+      />
+    </Space.Compact>
   );
 }

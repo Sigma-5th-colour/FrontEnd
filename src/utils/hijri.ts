@@ -3,8 +3,8 @@
  * `Intl.DateTimeFormat` supports the `islamic-umalqura` calendar natively in
  * every evergreen browser, and Umm al-Qura is the Saudi civil calendar (more
  * correct here than most npm Hijri packages, which implement tabular Hijri
- * and can drift a day). Display-only: the stored/transmitted value stays
- * Gregorian ISO `YYYY-MM-DD`.
+ * and can drift a day). The stored/transmitted value can still stay
+ * Gregorian ISO `YYYY-MM-DD` where the API expects it.
  */
 
 export interface HijriParts {
@@ -13,7 +13,7 @@ export interface HijriParts {
   day: number;
 }
 
-const HIJRI_MONTHS_AR = [
+export const HIJRI_MONTHS_AR = [
   'محرم',
   'صفر',
   'ربيع الأول',
@@ -28,7 +28,7 @@ const HIJRI_MONTHS_AR = [
   'ذو الحجة',
 ];
 
-const HIJRI_MONTHS_EN = [
+export const HIJRI_MONTHS_EN = [
   'Muharram',
   'Safar',
   'Rabi al-Awwal',
@@ -94,13 +94,57 @@ export function toHijriIsoString(date: Date): string | null {
   return `${parts.year}/${mm}/${dd}`;
 }
 
+export function getHijriMonthName(month: number, lang: 'ar' | 'en'): string {
+  const monthName = lang === 'ar' ? HIJRI_MONTHS_AR[month - 1] : HIJRI_MONTHS_EN[month - 1];
+  return monthName ?? String(month);
+}
+
+function formatIsoDate(date: Date): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Converts a Hijri (Umm al-Qura) day back to the Gregorian ISO date the API
+ * already accepts. Intl only formats Gregorian -> Hijri, so this performs a
+ * bounded lookup around the expected Gregorian year.
+ */
+export function hijriToGregorianIso(parts: HijriParts): string | null {
+  if (!isHijriSupported()) return null;
+
+  const { year, month, day } = parts;
+  if (!year || month < 1 || month > 12 || day < 1 || day > 30) return null;
+
+  const center = new Date(year + 579, month - 1, day, 12, 0, 0, 0);
+  for (let offset = -370; offset <= 370; offset += 1) {
+    const candidate = new Date(center);
+    candidate.setDate(center.getDate() + offset);
+    const candidateParts = toHijriParts(candidate);
+    if (
+      candidateParts?.year === year &&
+      candidateParts.month === month &&
+      candidateParts.day === day
+    ) {
+      return formatIsoDate(candidate);
+    }
+  }
+
+  return null;
+}
+
+export function getHijriMonthLength(year: number, month: number): number {
+  return hijriToGregorianIso({ year, month, day: 30 }) ? 30 : 29;
+}
+
 /** e.g. "١٢ جمادى الأولى ١٤٤٦ هـ" (ar) / "12 Jumada al-Awwal 1446 AH" (en). Falls back to a Gregorian string if unsupported. */
 export function formatHijri(date: Date, lang: 'ar' | 'en'): string {
   const parts = toHijriParts(date);
   if (!parts) {
     return date.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US');
   }
-  const monthName = lang === 'ar' ? HIJRI_MONTHS_AR[parts.month - 1] : HIJRI_MONTHS_EN[parts.month - 1];
+  const monthName = getHijriMonthName(parts.month, lang);
   if (lang === 'ar') {
     return `${toArabicDigits(parts.day)} ${monthName} ${toArabicDigits(parts.year)} هـ`;
   }
