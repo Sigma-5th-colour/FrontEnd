@@ -1,7 +1,7 @@
 import { api } from '@/lib/api/client';
 import { API_ENDPOINTS } from '@/config/api.config';
 import { unwrapList } from '@/lib/api/unwrap';
-import type { Department, CreateDepartmentDto } from '@/types/hr.types';
+import type { Department, CreateDepartmentDto, UpdateDepartmentDto } from '@/types/hr.types';
 
 export class DepartmentService {
   static async getAll(): Promise<Department[]> {
@@ -9,17 +9,12 @@ export class DepartmentService {
     return unwrapList<Department>(response.data);
   }
 
-  // POST /api/V1/Department — nameAr and nameEn are sent as query params per spec.
-  // An empty object body is required so a Content-Length header is emitted —
-  // a bodyless POST returns HTTP 411 (Length Required) from this backend.
   static async create(dto: CreateDepartmentDto): Promise<void> {
-    await api.post(API_ENDPOINTS.DEPARTMENT.CREATE, {}, {
-      params: {
-        nameAr: dto.nameAr || undefined,
-        nameEn: dto.nameEn || undefined,
-      },
-    });
+    await api.post(API_ENDPOINTS.DEPARTMENT.CREATE, dto);
   }
 
+  static async update(id: string, dto: UpdateDepartmentDto): Promise<void> {
+    await api.put(API_ENDPOINTS.DEPARTMENT.UPDATE(id), dto);
+  }
 
 }

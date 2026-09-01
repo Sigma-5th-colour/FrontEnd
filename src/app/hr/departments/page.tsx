@@ -11,17 +11,21 @@ import {
   Input,
   Typography,
   Tag,
+  Select,
+  Tooltip,
 } from 'antd';
-import { PlusOutlined, ApartmentOutlined } from '@ant-design/icons';
+import { PlusOutlined, ApartmentOutlined, EditOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useDepartments } from '@/hooks/api/useAdmin';
+import { useHREmployees } from '@/hooks/api/useHR';
 import { useHrActionGates } from '@/hooks/useActionPermissionGates';
-import type { Department, CreateDepartmentDto } from '@/types/hr.types';
+import type { Department, CreateDepartmentDto, UpdateDepartmentDto } from '@/types/hr.types';
 
 const { Title } = Typography;
 
 export default function HRDepartmentsPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Department | null>(null);
   const [form] = Form.useForm();
   const hrGates = useHrActionGates();
 
@@ -29,26 +33,56 @@ export default function HRDepartmentsPage() {
     departments,
     isLoading,
     createDepartment,
+    updateDepartment,
     isCreating,
+    isUpdating,
   } = useDepartments();
+  const { employees, isLoading: isLoadingEmployees } = useHREmployees({ pageSize: 500 }, hrGates.canManage);
 
   const openCreate = () => {
     if (!hrGates.canCreate) return;
+    setEditing(null);
     form.resetFields();
     setModalOpen(true);
   };
 
+  const openEdit = (record: Department) => {
+    if (!hrGates.canUpdate) return;
+    setEditing(record);
+    form.setFieldsValue({
+      nameAr: record.nameAr,
+      nameEn: record.nameEn,
+      managerEmployeeId: record.managerEmployeeId || undefined,
+    });
+    setModalOpen(true);
+  };
+
   const handleSubmit = async () => {
-    if (!hrGates.canCreate) return;
+    if (editing ? !hrGates.canUpdate : !hrGates.canCreate) return;
     try {
       const values = await form.validateFields();
-      await createDepartment(values as CreateDepartmentDto);
+      const payload: CreateDepartmentDto | UpdateDepartmentDto = {
+        nameAr: values.nameAr,
+        nameEn: values.nameEn || null,
+        managerEmployeeId: values.managerEmployeeId || null,
+      };
+      if (editing) {
+        await updateDepartment({ id: editing.id, data: payload });
+      } else {
+        await createDepartment(payload);
+      }
       setModalOpen(false);
+      setEditing(null);
       form.resetFields();
     } catch {
       // Form validation or API errors are surfaced by antd / the mutation toast.
     }
   };
+
+  const employeeOptions = employees.map((employee) => ({
+    value: employee.id,
+    label: `${employee.nameAr || employee.nameEn || employee.id}${employee.employeeNumber ? ` (${employee.employeeNumber})` : ''}`,
+  }));
 
   const columns: ColumnsType<Department> = [
     {
@@ -70,6 +104,23 @@ export default function HRDepartmentsPage() {
       title: 'اسم القسم بالإنجليزية',
       dataIndex: 'nameEn',
       render: (v) => v || '—',
+    },
+    {
+      title: 'مدير الوحدة',
+      key: 'manager',
+      render: (_, record) =>
+        record.managerEmployeeNameAr || record.managerEmployeeNameEn || record.managerEmployeeId || '—',
+    },
+    {
+      title: 'الإجراءات',
+      key: 'actions',
+      width: 80,
+      render: (_, record) =>
+        hrGates.canUpdate ? (
+          <Tooltip title="تعديل">
+            <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          </Tooltip>
+        ) : null,
     },
   ];
 
@@ -108,15 +159,16 @@ export default function HRDepartmentsPage() {
       </Card>
 
       <Modal
-        open={modalOpen && hrGates.canCreate}
-        title="إضافة قسم جديد"
+        open={modalOpen && (editing ? hrGates.canUpdate : hrGates.canCreate)}
+        title={editing ? 'تعديل القسم' : 'إضافة قسم جديد'}
         onCancel={() => {
           setModalOpen(false);
+          setEditing(null);
           form.resetFields();
         }}
         onOk={handleSubmit}
-        confirmLoading={isCreating}
-        okText="إضافة"
+        confirmLoading={isCreating || isUpdating}
+        okText={editing ? 'حفظ' : 'إضافة'}
         cancelText="إلغاء"
         width={460}
         destroyOnHidden
@@ -131,6 +183,16 @@ export default function HRDepartmentsPage() {
           </Form.Item>
           <Form.Item name="nameEn" label="اسم القسم بالإنجليزية">
             <Input placeholder="e.g. Human Resources" />
+          </Form.Item>
+          <Form.Item name="managerEmployeeId" label="مدير الوحدة">
+            <Select
+              allowClear
+              showSearch
+              placeholder="اختر مدير الوحدة"
+              loading={isLoadingEmployees}
+              options={employeeOptions}
+              optionFilterProp="label"
+            />
           </Form.Item>
         </Form>
       </Modal>

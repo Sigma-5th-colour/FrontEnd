@@ -23,11 +23,12 @@ import {
   LoginOutlined,
   LogoutOutlined,
   EnvironmentOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { AdvancedFilterPanel } from '@/components/filters';
-import { useHRAttendance, useHREmployees } from '@/hooks/api/useHR';
+import { useHRAttendance, useHREmployees, useHRReportExport, useHRShifts } from '@/hooks/api/useHR';
 import type { AttendanceFilterDto, AttendanceRecord } from '@/types/hr.types';
 import { useAttendanceAccessGates } from '@/hooks/useActionPermissionGates';
 
@@ -101,6 +102,8 @@ export default function HRAttendancePage() {
     );
 
   const { employees } = useHREmployees({ pageSize: 200 }, attendanceGates.canFilterRecords);
+  const { shifts } = useHRShifts(true, attendanceGates.canFilterRecords);
+  const exportReport = useHRReportExport();
 
   const employeeOptions = employees.map((e) => ({
     value: e.id,
@@ -110,6 +113,10 @@ export default function HRAttendancePage() {
   const employeeNameById = useMemo(
     () => Object.fromEntries(employees.map((e) => [e.id, e.nameAr || e.nameEn || e.id])),
     [employees]
+  );
+  const shiftNameById = useMemo(
+    () => Object.fromEntries(shifts.map((shift) => [shift.id, shift.name || shift.id])),
+    [shifts]
   );
 
   const resolveEmployeeName = (record: AttendanceRecord) =>
@@ -144,6 +151,19 @@ export default function HRAttendancePage() {
     form.resetFields();
     setFilter({});
     setHasSearched(true);
+  };
+
+  const handleExport = () => {
+    const monthYear: dayjs.Dayjs | undefined = form.getFieldValue('monthYear');
+    const attendanceDay: dayjs.Dayjs | undefined = form.getFieldValue('attendanceDay');
+    exportReport.mutate({
+      reportType: 'attendance',
+      employeeId: form.getFieldValue('employeeId') || null,
+      fromDate: attendanceDay ? attendanceDay.startOf('day').toISOString() : null,
+      toDate: attendanceDay ? attendanceDay.endOf('day').toISOString() : null,
+      month: monthYear ? monthYear.month() + 1 : null,
+      year: monthYear ? monthYear.year() : null,
+    });
   };
 
   // Pull-to-apply page (kept intentionally — this drives report generation,
@@ -212,6 +232,12 @@ export default function HRAttendancePage() {
           r.checkOutEmployeeLongitude,
           r.checkOutDistanceFromBranchMeters
         ),
+    },
+    {
+      title: 'الوردية',
+      dataIndex: 'shiftId',
+      width: 170,
+      render: (v) => (v ? shiftNameById[v] ?? v : '—'),
     },
     {
       title: 'دقائق التأخير',
@@ -347,14 +373,25 @@ export default function HRAttendancePage() {
             </>
           }
           actions={
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              loading={isLoading}
-              onClick={handleFilter}
-            >
-              بحث
-            </Button>
+            <Space>
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                loading={isLoading}
+                onClick={handleFilter}
+              >
+                بحث
+              </Button>
+              {attendanceGates.canFilterRecords && (
+                <Button
+                  icon={<DownloadOutlined />}
+                  loading={exportReport.isPending}
+                  onClick={handleExport}
+                >
+                  تصدير
+                </Button>
+              )}
+            </Space>
           }
         />
       </Form>

@@ -52,6 +52,17 @@ export default function EmployeeDetailView({
         <Descriptions.Item label="القسم">
           {employee.departmentNameAr || employee.departmentNameEn || '—'}
         </Descriptions.Item>
+        <Descriptions.Item label="الوردية">
+          {employee.shiftName || '—'}
+        </Descriptions.Item>
+        <Descriptions.Item label="ساعات الوردية">
+          {employee.shiftStartTime && employee.shiftEndTime
+            ? `${employee.shiftStartTime.slice(0, 5)} - ${employee.shiftEndTime.slice(0, 5)}`
+            : '—'}
+        </Descriptions.Item>
+        <Descriptions.Item label="فترة السماح بالدقائق">
+          {employee.shiftGracePeriodMinutes ?? '—'}
+        </Descriptions.Item>
         <Descriptions.Item label="الجنسية" span={2}>
           {employee.nationalityNameAr || employee.nationalityNameEn || '—'}
         </Descriptions.Item>

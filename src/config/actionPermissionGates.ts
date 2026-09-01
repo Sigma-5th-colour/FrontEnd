@@ -61,14 +61,25 @@ export function getAccountingActionGates(userAccess: PermissionSubject) {
 
 export function getHrActionGates(userAccess: PermissionSubject) {
   const canManage = hasAccessPermission(userAccess, HR_MANAGE_PERMISSIONS);
+  const canApproveUnitManager =
+    canManage || hasAccessPermission(userAccess, APP_PERMISSIONS.HR_APPROVE_UNIT_MANAGER);
+  const canApproveHrManager =
+    canManage || hasAccessPermission(userAccess, APP_PERMISSIONS.HR_APPROVE_HR_MANAGER);
+  const canApproveExecutiveManager =
+    canManage || hasAccessPermission(userAccess, APP_PERMISSIONS.HR_APPROVE_EXECUTIVE_MANAGER);
   const canSubmitRequest = canManage || hasHrSelfServiceRole(userAccess);
   return {
     canCreate: canManage,
     canSubmitRequest,
     canUpdate: canManage,
     canDelete: canManage,
-    canApprove: canManage,
-    canReject: canManage,
+    canApprove: canApproveUnitManager || canApproveHrManager || canApproveExecutiveManager,
+    canReject: canApproveUnitManager || canApproveHrManager || canApproveExecutiveManager,
+    canApproveUnitManager,
+    canApproveHrManager,
+    canApproveExecutiveManager,
+    canManageShifts: canManage || hasAccessPermission(userAccess, APP_PERMISSIONS.HR_SHIFT_MANAGE),
+    canExportReports: canManage || hasAccessPermission(userAccess, APP_PERMISSIONS.HR_REPORT_EXPORT),
     canClose: canManage,
     canResetPassword: canManage,
     canManage,

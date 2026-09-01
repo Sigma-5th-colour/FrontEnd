@@ -11,6 +11,7 @@ import {
   Popconfirm,
   Typography,
   Modal,
+  Form,
   Descriptions,
   Row,
   Col,
@@ -24,14 +25,28 @@ import {
   CloseOutlined,
   EyeOutlined,
   InboxOutlined,
+  PrinterOutlined,
   ReloadOutlined,
+  RollbackOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { AdvancedFilterPanel } from '@/components/filters';
 import { useHRCustodyRequests, useHREmployees } from '@/hooks/api/useHR';
 import { useHrActionGates } from '@/hooks/useActionPermissionGates';
-import { RequestStatus, type CustodyRequestDto, type CustodyRequestItemDto } from '@/types/hr.types';
+import {
+  RequestStatus,
+  type CustodyRequestDto,
+  type CustodyRequestItemDto,
+  type HRRequestPrintDto,
+} from '@/types/hr.types';
+import {
+  ApprovalStageTag,
+  ApprovalSteps,
+  PrintPreview,
+  RequestStatusTag,
+  canActOnApprovalStage,
+} from '../_components/requestWorkflow';
 import styles from './CustodyRequests.module.css';
 
 const { Title } = Typography;
@@ -41,11 +56,13 @@ const STATUS_COLOR: Record<number, string> = {
   [RequestStatus.Pending]: 'warning',
   [RequestStatus.Approved]: 'success',
   [RequestStatus.Rejected]: 'error',
+  [RequestStatus.Withdrawn]: 'default',
 };
 const STATUS_LABEL: Record<number, string> = {
   [RequestStatus.Pending]: 'قيد الانتظار',
   [RequestStatus.Approved]: 'موافق عليه',
   [RequestStatus.Rejected]: 'مرفوض',
+  [RequestStatus.Withdrawn]: 'مسحوب',
 };
 
 const itemColumns: ColumnsType<CustodyRequestItemDto> = [
@@ -82,6 +99,9 @@ const itemColumns: ColumnsType<CustodyRequestItemDto> = [
 
 export default function CustodyRequestsPage() {
   const [detailRecord, setDetailRecord] = useState<CustodyRequestDto | null>(null);
+  const [rejectRecord, setRejectRecord] = useState<CustodyRequestDto | null>(null);
+  const [printData, setPrintData] = useState<HRRequestPrintDto | null>(null);
+  const [rejectForm] = Form.useForm();
   const hrGates = useHrActionGates();
 
   const {
@@ -90,8 +110,12 @@ export default function CustodyRequestsPage() {
     refetch,
     approveCustodyRequest,
     rejectCustodyRequest,
+    withdrawCustodyRequest,
+    printCustodyRequest,
     isApproving,
     isRejecting,
+    isWithdrawing,
+    isPrinting,
   } = useHRCustodyRequests();
 
   const { employees } = useHREmployees({ pageSize: 500 });
@@ -104,16 +128,43 @@ export default function CustodyRequestsPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   const runAction = (id: string, fn: (id: string) => Promise<unknown>) => {
-    if (!hrGates.canManage) return Promise.resolve();
     setActioningId(id);
     // onError toast already shown by the mutation; catch here so a rejection
     // doesn't bubble as unhandled — Popconfirm's onConfirm doesn't await this.
     return fn(id).catch(() => {}).finally(() => setActioningId(null));
   };
 
+  const handleReject = async () => {
+    if (!rejectRecord) return;
+    try {
+      const values = await rejectForm.validateFields();
+      setActioningId(rejectRecord.id);
+      await rejectCustodyRequest({ id: rejectRecord.id, reason: values.reason });
+      setRejectRecord(null);
+      rejectForm.resetFields();
+    } catch {
+      // Validation and mutation errors are displayed by antd / hooks.
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handlePrint = async (id: string) => {
+    setActioningId(id);
+    try {
+      const data = await printCustodyRequest(id);
+      setPrintData(data);
+    } catch {
+      // Hook displays the API error.
+    } finally {
+      setActioningId(null);
+    }
+  };
+
   const pendingCount  = custodyRequests.filter((r) => r.status === RequestStatus.Pending).length;
   const approvedCount = custodyRequests.filter((r) => r.status === RequestStatus.Approved).length;
   const rejectedCount = custodyRequests.filter((r) => r.status === RequestStatus.Rejected).length;
+  const withdrawnCount = custodyRequests.filter((r) => r.status === RequestStatus.Withdrawn).length;
 
   const filteredRequests = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -150,22 +201,51 @@ export default function CustodyRequestsPage() {
       title: 'الحالة',
       dataIndex: 'status',
       width: 130,
-      render: (v: number) => (
-        <Tag color={STATUS_COLOR[v] ?? 'default'}>{STATUS_LABEL[v] ?? `حالة ${v}`}</Tag>
-      ),
+      render: (v: number) => <RequestStatusTag status={v} />,
+    },
+    {
+      title: 'مرحلة الاعتماد',
+      dataIndex: 'approval',
+      width: 170,
+      render: (_, record) => <ApprovalStageTag approval={record.approval} />,
     },
     {
       title: 'الإجراءات',
       key: 'actions',
-      width: 130,
+      width: 190,
       render: (_, record) => {
         const isPending = record.status === RequestStatus.Pending;
+        const canApprove = canActOnApprovalStage(record, hrGates);
         return (
           <Space>
             <Tooltip title="عرض التفاصيل">
               <Button type="text" icon={<EyeOutlined />} onClick={() => setDetailRecord(record)} />
             </Tooltip>
-            {isPending && hrGates.canManage && (
+            <Tooltip title="طباعة">
+              <Button
+                type="text"
+                icon={<PrinterOutlined />}
+                loading={isPrinting && actioningId === record.id}
+                onClick={() => handlePrint(record.id)}
+              />
+            </Tooltip>
+            {isPending && (
+              <Tooltip title="سحب الطلب">
+                <Popconfirm
+                  title="سحب طلب العهدة؟"
+                  onConfirm={() => runAction(record.id, withdrawCustodyRequest)}
+                  okText="سحب"
+                  cancelText="إلغاء"
+                >
+                  <Button
+                    type="text"
+                    icon={<RollbackOutlined />}
+                    loading={isWithdrawing && actioningId === record.id}
+                  />
+                </Popconfirm>
+              </Tooltip>
+            )}
+            {canApprove && (
               <>
                 <Tooltip title="موافقة">
                   <Popconfirm
@@ -183,20 +263,13 @@ export default function CustodyRequestsPage() {
                   </Popconfirm>
                 </Tooltip>
                 <Tooltip title="رفض">
-                  <Popconfirm
-                    title="تأكيد رفض طلب العهدة؟"
-                    onConfirm={() => runAction(record.id, rejectCustodyRequest)}
-                    okText="رفض"
-                    cancelText="إلغاء"
-                    okButtonProps={{ danger: true }}
-                  >
                     <Button
                       type="text"
                       danger
                       icon={<CloseOutlined />}
+                      onClick={() => setRejectRecord(record)}
                       loading={isRejecting && actioningId === record.id}
                     />
-                  </Popconfirm>
                 </Tooltip>
               </>
             )}
@@ -232,6 +305,11 @@ export default function CustodyRequestsPage() {
             <Statistic title="مرفوضة" value={rejectedCount} styles={{ content: { color: '#ff4d4f' } }} />
           </Card>
         </Col>
+        <Col xs={8}>
+          <Card size="small">
+            <Statistic title="مسحوبة" value={withdrawnCount} styles={{ content: { color: '#8c8c8c' } }} />
+          </Card>
+        </Col>
       </Row>
 
       <AdvancedFilterPanel
@@ -259,6 +337,7 @@ export default function CustodyRequestsPage() {
                   { value: RequestStatus.Pending, label: 'قيد الانتظار' },
                   { value: RequestStatus.Approved, label: 'موافق عليه' },
                   { value: RequestStatus.Rejected, label: 'مرفوض' },
+                  { value: RequestStatus.Withdrawn, label: 'مسحوب' },
                 ]}
               />
             </div>
@@ -307,6 +386,9 @@ export default function CustodyRequestsPage() {
                   {STATUS_LABEL[detailRecord.status ?? 0] ?? `حالة ${detailRecord.status}`}
                 </Tag>
               </Descriptions.Item>
+              <Descriptions.Item label="مرحلة الاعتماد">
+                <ApprovalStageTag approval={detailRecord.approval} />
+              </Descriptions.Item>
               <Descriptions.Item label="عدد الأصناف">
                 {detailRecord.items?.length ?? 0}
               </Descriptions.Item>
@@ -330,6 +412,39 @@ export default function CustodyRequestsPage() {
             )}
           </>
         )}
+      </Modal>
+
+      <Modal
+        open={!!rejectRecord}
+        title="رفض طلب العهدة"
+        onCancel={() => {
+          setRejectRecord(null);
+          rejectForm.resetFields();
+        }}
+        onOk={handleReject}
+        confirmLoading={isRejecting && actioningId === rejectRecord?.id}
+        okText="رفض"
+        cancelText="إلغاء"
+        okButtonProps={{ danger: true }}
+        destroyOnHidden
+      >
+        {rejectRecord && <ApprovalSteps approval={rejectRecord.approval} />}
+        <Form form={rejectForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="reason" label="سبب الرفض" rules={[{ required: true, message: 'سبب الرفض مطلوب' }]}>
+            <Input.TextArea rows={4} maxLength={1000} showCount />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={!!printData}
+        title="معاينة الطباعة"
+        onCancel={() => setPrintData(null)}
+        footer={<Button onClick={() => window.print()} icon={<PrinterOutlined />}>طباعة</Button>}
+        width={760}
+        destroyOnHidden
+      >
+        {printData && <PrintPreview data={printData} />}
       </Modal>
     </div>
   );

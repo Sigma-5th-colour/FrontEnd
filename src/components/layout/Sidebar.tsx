@@ -359,6 +359,14 @@ export default function Sidebar({
           label: language === 'ar' ? 'الحضور والانصراف' : 'Attendance',
         },
         {
+          key: '/hr/shifts',
+          label: language === 'ar' ? 'الورديات' : 'Shifts',
+        },
+        {
+          key: '/hr/reports',
+          label: language === 'ar' ? 'تقارير الموارد البشرية' : 'HR Reports',
+        },
+        {
           key: '/hr/leave',
           label: language === 'ar' ? 'طلبات الإجازات' : 'Leave Requests',
         },

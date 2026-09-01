@@ -49,12 +49,18 @@ export interface Department {
   id: string;
   nameAr?: string | null;
   nameEn?: string | null;
+  managerEmployeeId?: string | null;
+  managerEmployeeNameAr?: string | null;
+  managerEmployeeNameEn?: string | null;
 }
 
 export interface CreateDepartmentDto {
   nameAr?: string | null;
   nameEn?: string | null;
+  managerEmployeeId?: string | null;
 }
+
+export type UpdateDepartmentDto = CreateDepartmentDto;
 
 // ==================== Employee Types ====================
 
@@ -83,6 +89,11 @@ export interface EmployeeDto {
   bankAccountNumber?: string | null;
   iban?: string | null;
   userName?: string | null;
+  shiftId?: string | null;
+  shiftName?: string | null;
+  shiftStartTime?: string | null;
+  shiftEndTime?: string | null;
+  shiftGracePeriodMinutes?: number | null;
 }
 
 export interface EmployeeCurrentDto extends EmployeeDto {
@@ -114,6 +125,7 @@ export interface CreateEmployeeDto {
   bankAccountNumber?: string | null;
   iban?: string | null;
   userName?: string | null;
+  shiftId?: string | null;
 }
 
 export interface UpdateEmployeeDto {
@@ -138,6 +150,44 @@ export interface UpdateEmployeeDto {
   bankName?: string | null;
   bankAccountNumber?: string | null;
   iban?: string | null;
+  shiftId?: string | null;
+}
+
+// ==================== Shift Types ====================
+
+export interface ShiftDto {
+  id: string;
+  name?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  gracePeriodMinutes?: number | null;
+  isActive?: boolean;
+}
+
+export interface CreateShiftDto {
+  name?: string | null;
+  startTime: string;
+  endTime: string;
+  gracePeriodMinutes: number;
+  isActive: boolean;
+}
+
+export type UpdateShiftDto = CreateShiftDto;
+
+export interface AssignEmployeeShiftDto {
+  employeeId: string;
+  shiftId: string;
+  effectiveFrom?: string | null;
+}
+
+export interface EmployeeCurrentShiftDto {
+  employeeId?: string | null;
+  shiftId?: string | null;
+  shiftName?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  gracePeriodMinutes?: number | null;
+  effectiveFrom?: string | null;
 }
 
 export interface EmployeePagedResponse {
@@ -241,6 +291,7 @@ export interface AttendanceRecord {
   checkOutTime?: string | null;
   lateMinutes?: number | null;
   overtimeMinutes?: number | null;
+  shiftId?: string | null;
   status?: AttendanceStatusCode | null;
   // ── Geolocation audit fields ──
   employeeLatitude?: number | null;
@@ -368,7 +419,59 @@ export const RequestStatus = {
   Approved: 1,
   Rejected: 2,
   Pending: 3,
+  Withdrawn: 4,
 } as const;
+
+export const HRApprovalStage = {
+  PendingUnitManager: 1,
+  PendingHRManager: 2,
+  PendingExecutiveManager: 3,
+  Approved: 4,
+  Rejected: 5,
+  Withdrawn: 6,
+} as const;
+
+export const HRApprovalLevelStatus = {
+  Pending: 0,
+  Approved: 1,
+  Rejected: 2,
+} as const;
+
+export interface HRApprovalDto {
+  approvalStage?: number | null;
+  unitManagerStatus?: number | null;
+  unitManagerApproverId?: string | null;
+  unitManagerApprovedAt?: string | null;
+  unitManagerRejectionReason?: string | null;
+  hrManagerStatus?: number | null;
+  hrManagerApproverId?: string | null;
+  hrManagerApprovedAt?: string | null;
+  hrManagerRejectionReason?: string | null;
+  executiveManagerStatus?: number | null;
+  executiveManagerApproverId?: string | null;
+  executiveManagerApprovedAt?: string | null;
+  executiveManagerRejectionReason?: string | null;
+  withdrawnAt?: string | null;
+  withdrawnByEmployeeId?: string | null;
+  rejectedReason?: string | null;
+}
+
+export interface RejectHRRequestDto {
+  reason: string;
+}
+
+export interface HRRequestPrintDto {
+  id: string;
+  requestType?: string | null;
+  employeeId?: string | null;
+  employeeName?: string | null;
+  employeeNumber?: string | null;
+  departmentName?: string | null;
+  status?: number | null;
+  approval?: HRApprovalDto | null;
+  createdAt?: string | null;
+  details?: Record<string, unknown> | null;
+}
 
 // ==================== Permission Request Types ====================
 
@@ -376,7 +479,7 @@ export type PermissionType = 1 | 2 | 3; // 1=ComeLate, 2=PartTime, 3=OutEarly
 export type PermissionNature = 1 | 2;   // 1=Official, 2=Personal
 
 export interface CreatePermissionRequestDto {
-  createdTo: string;
+  createdTo?: string | null;
   permissionDate: string;
   permissionType: PermissionType;
   permissionNature: PermissionNature;
@@ -401,12 +504,13 @@ export interface PermissionRequestDto {
   outEarlyTime?: string | null;
   reasons?: string | null;
   status?: number | null;
+  approval?: HRApprovalDto | null;
 }
 
 // ==================== Resignation Request Types ====================
 
 export interface CreateResignationRequestDto {
-  createdTo: string;
+  createdTo?: string | null;
   resignationDate: string;
   endDate: string;
   reasons: string;
@@ -421,6 +525,7 @@ export interface ResignationRequestDto {
   endDate?: string | null;
   reasons?: string | null;
   status?: number | null;
+  approval?: HRApprovalDto | null;
 }
 
 // ==================== Custody Request Types ====================
@@ -445,7 +550,7 @@ export interface CustodyItemDto {
 }
 
 export interface CreateCustodyRequestDto {
-  createdTo: string;
+  createdTo?: string | null;
   details: string;
   reasons: string;
   custodyItems: CustodyItemDto[];
@@ -473,6 +578,20 @@ export interface CustodyRequestDto {
   status?: CustodyRequestStatus | null;
   createdAt?: string | null;
   items?: CustodyRequestItemDto[] | null;
+  approval?: HRApprovalDto | null;
+}
+
+// ==================== HR Report Types ====================
+
+export type HRReportType = 'attendance' | 'permission' | 'vacation' | 'leave';
+
+export interface HRReportExportRequestDto {
+  reportType: HRReportType;
+  employeeId?: string | null;
+  fromDate?: string | null;
+  toDate?: string | null;
+  month?: number | null;
+  year?: number | null;
 }
 
 // ==================== Payroll Types ====================

@@ -39,7 +39,10 @@ export default function PermissionRequestPage() {
   const [permissionType, setPermissionType] = useState<number>(3);
   const hrGates = useHrActionGates();
 
-  const { employees, isLoading: isLoadingEmployees } = useHREmployees({ pageSize: 200 });
+  const { employees, isLoading: isLoadingEmployees } = useHREmployees(
+    { pageSize: 200 },
+    hrGates.canManage
+  );
   const { createPermissionRequest, isCreating } = useHRPermissionRequest();
 
   const handleEmployeeChange = (id: string) => {
@@ -53,7 +56,7 @@ export default function PermissionRequestPage() {
       const values = await form.validateFields();
 
       const dto: CreatePermissionRequestDto = {
-        createdTo: values.createdTo,
+        ...(values.createdTo ? { createdTo: values.createdTo } : {}),
         permissionDate: values.permissionDate.toISOString(),
         permissionType: values.permissionType as PermissionType,
         permissionNature: values.permissionNature as PermissionNature,
@@ -108,24 +111,29 @@ export default function PermissionRequestPage() {
               styles={{ header: { background: '#4da6e8', border: 'none' } }}
               style={{ height: '100%' }}
             >
-              <div style={{ marginBottom: 8, fontWeight: 500 }}>من أجل</div>
-              <Form.Item
-                name="createdTo"
-                rules={[{ required: true, message: 'يرجى اختيار الموظف' }]}
-                style={{ marginBottom: 16 }}
-              >
-                <Select
-                  showSearch
-                  placeholder="اختر الموظف"
-                  loading={isLoadingEmployees}
-                  onChange={handleEmployeeChange}
-                  optionFilterProp="label"
-                  options={employees.map((e) => ({
-                    value: e.id,
-                    label: e.nameAr || e.nameEn || e.id,
-                  }))}
-                />
-              </Form.Item>
+              {hrGates.canManage ? (
+                <>
+                  <div style={{ marginBottom: 8, fontWeight: 500 }}>من أجل</div>
+                  <Form.Item name="createdTo" style={{ marginBottom: 16 }}>
+                    <Select
+                      allowClear
+                      showSearch
+                      placeholder="اتركه فارغاً لإنشاء الطلب لنفسك"
+                      loading={isLoadingEmployees}
+                      onChange={handleEmployeeChange}
+                      optionFilterProp="label"
+                      options={employees.map((e) => ({
+                        value: e.id,
+                        label: e.nameAr || e.nameEn || e.id,
+                      }))}
+                    />
+                  </Form.Item>
+                </>
+              ) : (
+                <div style={{ color: '#666', marginBottom: 16 }}>
+                  سيتم إرسال الطلب باسم الموظف المرتبط بحسابك.
+                </div>
+              )}
 
               {selectedEmployee && (
                 <Descriptions column={1} size="small" bordered>

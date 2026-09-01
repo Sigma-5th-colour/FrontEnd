@@ -12,6 +12,7 @@ import type {
   AddUserDto,
   AssignRoleDto,
   CreateDepartmentDto,
+  UpdateDepartmentDto,
 } from '@/types/hr.types';
 
 const QK = {
@@ -150,11 +151,25 @@ export function useDepartments() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateDepartmentDto }) =>
+      DepartmentService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.departments });
+      message.success('تم تحديث القسم بنجاح');
+    },
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل تحديث القسم'));
+    },
+  });
+
   return {
     departments: query.data ?? [],
     isLoading: query.isLoading,
     refetch: query.refetch,
     createDepartment: createMutation.mutateAsync,
+    updateDepartment: updateMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
   };
 }

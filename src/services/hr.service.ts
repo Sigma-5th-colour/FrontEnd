@@ -8,6 +8,11 @@ import type {
   EmployeeListQuery,
   CreateEmployeeDto,
   UpdateEmployeeDto,
+  ShiftDto,
+  CreateShiftDto,
+  UpdateShiftDto,
+  AssignEmployeeShiftDto,
+  EmployeeCurrentShiftDto,
   AttendanceFilterDto,
   AttendanceLocationDto,
   AttendanceRecord,
@@ -31,6 +36,9 @@ import type {
   EmployeeLeaveBalanceDto,
   FilterInboxDto,
   FilterOutboxDto,
+  RejectHRRequestDto,
+  HRRequestPrintDto,
+  HRReportExportRequestDto,
 } from '@/types/hr.types';
 
 // ─── Employee Service ────────────────────────────────────────────────────────
@@ -147,6 +155,48 @@ export class HRAttendanceService {
   }
 }
 
+// ─── Shift Service ───────────────────────────────────────────────────────────
+
+export class HRShiftService {
+  static async getAll(activeOnly?: boolean): Promise<ShiftDto[]> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_SHIFT.GET_ALL, {
+      params: activeOnly === undefined ? undefined : { activeOnly },
+    });
+    return unwrapList<ShiftDto>(response.data);
+  }
+
+  static async getById(id: string): Promise<ShiftDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_SHIFT.GET_BY_ID(id));
+    return unwrap<ShiftDto>(response.data);
+  }
+
+  static async create(data: CreateShiftDto): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_SHIFT.CREATE, data);
+  }
+
+  static async update(id: string, data: UpdateShiftDto): Promise<void> {
+    await api.put(API_ENDPOINTS.HR_SHIFT.UPDATE(id), data);
+  }
+
+  static async setActive(id: string, isActive: boolean): Promise<void> {
+    await api.put(API_ENDPOINTS.HR_SHIFT.SET_ACTIVE(id), {}, { params: { isActive } });
+  }
+
+  static async assign(data: AssignEmployeeShiftDto): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_SHIFT.ASSIGN, data);
+  }
+
+  static async getCurrentEmployeeShift(employeeId: string): Promise<EmployeeCurrentShiftDto | null> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_SHIFT.CURRENT_EMPLOYEE(employeeId));
+    return unwrap<EmployeeCurrentShiftDto | null>(response.data);
+  }
+
+  static async getEmployeeShiftHistory(employeeId: string): Promise<EmployeeCurrentShiftDto[]> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_SHIFT.EMPLOYEE_HISTORY(employeeId));
+    return unwrapList<EmployeeCurrentShiftDto>(response.data);
+  }
+}
+
 // ─── Leave Service ───────────────────────────────────────────────────────────
 
 export class HRLeaveService {
@@ -222,12 +272,26 @@ export class HRPermissionRequestService {
     await api.post(API_ENDPOINTS.HR_PERMISSION_REQUEST.CREATE, data);
   }
 
+  static async getById(id: string): Promise<PermissionRequestDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_PERMISSION_REQUEST.GET_BY_ID(id));
+    return unwrap<PermissionRequestDto>(response.data);
+  }
+
   static async approve(id: string): Promise<void> {
     await api.post(API_ENDPOINTS.HR_PERMISSION_REQUEST.APPROVE(id), {});
   }
 
-  static async reject(id: string): Promise<void> {
-    await api.post(API_ENDPOINTS.HR_PERMISSION_REQUEST.REJECT(id), {});
+  static async reject(id: string, dto?: RejectHRRequestDto): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_PERMISSION_REQUEST.REJECT(id), dto ?? {});
+  }
+
+  static async withdraw(id: string): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_PERMISSION_REQUEST.WITHDRAW(id), {});
+  }
+
+  static async print(id: string): Promise<HRRequestPrintDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_PERMISSION_REQUEST.PRINT(id));
+    return unwrap<HRRequestPrintDto>(response.data);
   }
 }
 
@@ -243,12 +307,26 @@ export class HRResignationRequestService {
     await api.post(API_ENDPOINTS.HR_RESIGNATION_REQUEST.CREATE, data);
   }
 
+  static async getById(id: string): Promise<ResignationRequestDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_RESIGNATION_REQUEST.GET_BY_ID(id));
+    return unwrap<ResignationRequestDto>(response.data);
+  }
+
   static async approve(id: string): Promise<void> {
     await api.post(API_ENDPOINTS.HR_RESIGNATION_REQUEST.APPROVE(id), {});
   }
 
-  static async reject(id: string): Promise<void> {
-    await api.post(API_ENDPOINTS.HR_RESIGNATION_REQUEST.REJECT(id), {});
+  static async reject(id: string, dto?: RejectHRRequestDto): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_RESIGNATION_REQUEST.REJECT(id), dto ?? {});
+  }
+
+  static async withdraw(id: string): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_RESIGNATION_REQUEST.WITHDRAW(id), {});
+  }
+
+  static async print(id: string): Promise<HRRequestPrintDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_RESIGNATION_REQUEST.PRINT(id));
+    return unwrap<HRRequestPrintDto>(response.data);
   }
 }
 
@@ -264,12 +342,26 @@ export class HRCustodyRequestService {
     await api.post(API_ENDPOINTS.HR_CUSTODY_REQUEST.CREATE, data);
   }
 
+  static async getById(id: string): Promise<CustodyRequestDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_CUSTODY_REQUEST.GET_BY_ID(id));
+    return unwrap<CustodyRequestDto>(response.data);
+  }
+
   static async approve(id: string): Promise<void> {
     await api.post(API_ENDPOINTS.HR_CUSTODY_REQUEST.APPROVE(id), {});
   }
 
-  static async reject(id: string): Promise<void> {
-    await api.post(API_ENDPOINTS.HR_CUSTODY_REQUEST.REJECT(id), {});
+  static async reject(id: string, dto?: RejectHRRequestDto): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_CUSTODY_REQUEST.REJECT(id), dto ?? {});
+  }
+
+  static async withdraw(id: string): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_CUSTODY_REQUEST.WITHDRAW(id), {});
+  }
+
+  static async print(id: string): Promise<HRRequestPrintDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_CUSTODY_REQUEST.PRINT(id));
+    return unwrap<HRRequestPrintDto>(response.data);
   }
 
   static async getTypes(): Promise<CustodyTypeDto[]> {
@@ -321,6 +413,17 @@ export class HRPayrollService {
   static async exportExcel(month: number, year: number): Promise<Blob> {
     const response = await api.get(API_ENDPOINTS.HR_PAYROLL.EXPORT, {
       params: { month, year },
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  }
+}
+
+// ─── HR Reports ──────────────────────────────────────────────────────────────
+
+export class HRReportService {
+  static async exportExcel(dto: HRReportExportRequestDto): Promise<Blob> {
+    const response = await api.post(API_ENDPOINTS.HR_REPORT.EXPORT, dto, {
       responseType: 'blob',
     });
     return response.data as Blob;

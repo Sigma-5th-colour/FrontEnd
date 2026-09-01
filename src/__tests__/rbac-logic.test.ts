@@ -338,7 +338,7 @@ test('sidebar access follows effective claims after token refresh fallback chang
       refreshedClaims.permissions,
       DEFAULT_ROLE_PAGE_MATRIX
     ),
-    false
+    true
   );
 });
 
@@ -421,10 +421,14 @@ test('page visibility: role alone is not enough when the page requires permissio
 test('page visibility: employees can access HR request pages only', () => {
   const subject = { roles: ['Employee'], permissions: [] };
   const selfServicePages = [
+    '/hr/attendance',
     '/hr/leave',
     '/hr/permission-request',
+    '/hr/permission-requests',
     '/hr/resignation-request',
+    '/hr/resignation-requests',
     '/hr/custody-request',
+    '/hr/custody-requests',
   ];
 
   for (const page of selfServicePages) {
@@ -450,7 +454,7 @@ test('page visibility: employees can access HR request pages only', () => {
   );
   assert.equal(
     canAccessPageWithPermissionRequirements(
-      '/hr/permission-requests',
+      '/hr/reports',
       subject.roles,
       subject.permissions,
       DEFAULT_ROLE_PAGE_MATRIX

@@ -87,6 +87,8 @@ export const PAGE_REGISTRY: PageDef[] = [
   { key: '/hr/positions', labelAr: 'المسميات الوظيفية', labelEn: 'Positions', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
   { key: '/hr/departments', labelAr: 'الأقسام', labelEn: 'Departments', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
   { key: '/hr/attendance', labelAr: 'الحضور والانصراف', labelEn: 'Attendance', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
+  { key: '/hr/shifts', labelAr: 'الورديات', labelEn: 'Shifts', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
+  { key: '/hr/reports', labelAr: 'تقارير الموارد البشرية', labelEn: 'HR Reports', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
   { key: '/hr/leave', labelAr: 'طلبات الإجازات', labelEn: 'Leave Requests', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
   { key: '/hr/leave-types', labelAr: 'أنواع الإجازات', labelEn: 'Leave Types', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },
   { key: '/hr/payroll', labelAr: 'الرواتب', labelEn: 'Payroll', group: 'hr', groupAr: 'الموارد البشرية', groupEn: 'Human Resources' },

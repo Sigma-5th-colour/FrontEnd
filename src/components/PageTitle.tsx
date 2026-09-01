@@ -70,6 +70,8 @@ const ROUTE_TITLES: Array<[string, Title]> = [
   ['/hr/positions', { ar: 'المسميات الوظيفية', en: 'Positions' }],
   ['/hr/departments', { ar: 'الأقسام', en: 'Departments' }],
   ['/hr/attendance', { ar: 'الحضور والانصراف', en: 'Attendance' }],
+  ['/hr/shifts', { ar: 'الورديات', en: 'Shifts' }],
+  ['/hr/reports', { ar: 'تقارير الموارد البشرية', en: 'HR Reports' }],
   ['/hr/leave-types', { ar: 'أنواع الإجازات', en: 'Leave Types' }],
   ['/hr/leave', { ar: 'طلبات الإجازات', en: 'Leave Requests' }],
   ['/hr/payroll', { ar: 'الرواتب', en: 'Payroll' }],

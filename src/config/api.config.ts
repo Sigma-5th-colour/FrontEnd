@@ -412,6 +412,17 @@ export const API_ENDPOINTS = {
     FILTER: '/api/V1/Attendance/Filter',
   },
 
+  HR_SHIFT: {
+    GET_ALL: '/api/V1/Shift',
+    GET_BY_ID: (id: string) => `/api/V1/Shift/${id}`,
+    CREATE: '/api/V1/Shift',
+    UPDATE: (id: string) => `/api/V1/Shift/${id}`,
+    SET_ACTIVE: (id: string) => `/api/V1/Shift/${id}/active`,
+    ASSIGN: '/api/V1/Shift/assign',
+    CURRENT_EMPLOYEE: (employeeId: string) => `/api/V1/Shift/employee/${employeeId}/current`,
+    EMPLOYEE_HISTORY: (employeeId: string) => `/api/V1/Shift/employee/${employeeId}/history`,
+  },
+
   HR_LEAVE: {
     GET_ALL: '/api/V1/Leave',
     CREATE: '/api/V1/Leave',
@@ -442,26 +453,39 @@ export const API_ENDPOINTS = {
 
   HR_PERMISSION_REQUEST: {
     GET_ALL: '/api/V1/PermissionRequest/GetAll',
+    GET_BY_ID: (id: string) => `/api/V1/PermissionRequest/${id}`,
     CREATE: '/api/V1/PermissionRequest/Create',
     APPROVE: (id: string) => `/api/V1/PermissionRequest/Approve/${id}`,
     REJECT: (id: string) => `/api/V1/PermissionRequest/Reject/${id}`,
+    WITHDRAW: (id: string) => `/api/V1/PermissionRequest/Withdraw/${id}`,
+    PRINT: (id: string) => `/api/V1/PermissionRequest/Print/${id}`,
   },
 
   HR_RESIGNATION_REQUEST: {
     GET_ALL: '/api/V1/ResignationRequest/GetAll',
+    GET_BY_ID: (id: string) => `/api/V1/ResignationRequest/${id}`,
     CREATE: '/api/V1/ResignationRequest/Create',
     APPROVE: (id: string) => `/api/V1/ResignationRequest/Approve/${id}`,
     REJECT: (id: string) => `/api/V1/ResignationRequest/Reject/${id}`,
+    WITHDRAW: (id: string) => `/api/V1/ResignationRequest/Withdraw/${id}`,
+    PRINT: (id: string) => `/api/V1/ResignationRequest/Print/${id}`,
   },
 
   HR_CUSTODY_REQUEST: {
     GET_ALL: '/api/V1/CustodyRequest/GetAll',
+    GET_BY_ID: (id: string) => `/api/V1/CustodyRequest/${id}`,
     CREATE: '/api/V1/CustodyRequest/Create',
     APPROVE: (id: string) => `/api/V1/CustodyRequest/Approve/${id}`,
     REJECT: (id: string) => `/api/V1/CustodyRequest/Reject/${id}`,
+    WITHDRAW: (id: string) => `/api/V1/CustodyRequest/Withdraw/${id}`,
+    PRINT: (id: string) => `/api/V1/CustodyRequest/Print/${id}`,
     GET_TYPES: '/api/V1/CustodyRequest/Types',
     GET_TYPE: (id: string) => `/api/V1/CustodyRequest/Types/${id}`,
     CREATE_TYPE: '/api/V1/CustodyRequest/Types/Create',
+  },
+
+  HR_REPORT: {
+    EXPORT: '/api/V1/HRReport/export',
   },
 
   // Plumbing only — no inbox/outbox UI feature exists yet in the HR module
@@ -479,8 +503,11 @@ export const API_ENDPOINTS = {
   // NOTE: POST uses query params (nameAr, nameEn), not a JSON body.
 
   DEPARTMENT: {
-    GET_ALL: '/api/V1/Lookup/Departments',
+    GET_ALL: '/api/V1/Department',
+    GET_BY_ID: (id: string) => `/api/V1/Department/${id}`,
+    LOOKUP: '/api/V1/Lookup/Departments',
     CREATE: '/api/V1/Department',
+    UPDATE: (id: string) => `/api/V1/Department/${id}`,
     DELETE: (id: string) => `/api/V1/Department/${id}`,
   },
 

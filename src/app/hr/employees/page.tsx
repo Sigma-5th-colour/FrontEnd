@@ -43,7 +43,7 @@ import {
   TextMatchFilter,
   type TextMatchValue,
 } from '@/components/filters';
-import { useHREmployees } from '@/hooks/api/useHR';
+import { useHREmployees, useHRShifts } from '@/hooks/api/useHR';
 import { useAdminPositions, useDepartments } from '@/hooks/api/useAdmin';
 import NationalitySelect from '@/components/common/NationalitySelect';
 import { useBranches } from '@/hooks/api/useBranches';
@@ -205,6 +205,7 @@ export default function HREmployeesPage() {
   const { positions } = useAdminPositions();
   const { departments } = useDepartments();
   const { branches = [] } = useBranches();
+  const { shifts, isLoading: isLoadingShifts } = useHRShifts(true);
 
   const handleSearch = useCallback((val: string) => {
     setSearch(val);
@@ -279,6 +280,7 @@ export default function HREmployeesPage() {
       jobId: record.jobId,
       departmentId: record.departmentId,
       branchId: record.branchId ? String(record.branchId) : undefined,
+      shiftId: record.shiftId || undefined,
       nationalityId: record.nationalityId,
       hiringDate: record.hiringDate ? dayjs(record.hiringDate) : undefined,
       isActive: record.isActive ?? true,
@@ -312,6 +314,7 @@ export default function HREmployeesPage() {
           // edit. Only send it when the user actively picks one — otherwise leave
           // it out so the backend keeps the employee's existing branch.
           ...(values.branchId ? { branchId: values.branchId } : {}),
+          shiftId: n(values.shiftId),
           nationalityId: n(values.nationalityId),
           hiringDate: values.hiringDate ? values.hiringDate.format('YYYY-MM-DD') : null,
           basicSalary: n(values.basicSalary),
@@ -335,6 +338,7 @@ export default function HREmployeesPage() {
           jobId: n(values.jobId),
           departmentId: n(values.departmentId),
           branchId: n(values.branchId),
+          shiftId: n(values.shiftId),
           nationalityId: n(values.nationalityId),
           hiringDate: values.hiringDate ? values.hiringDate.format('YYYY-MM-DD') : null,
           basicSalary: n(values.basicSalary),
@@ -364,6 +368,11 @@ export default function HREmployeesPage() {
   const departmentOptions = departments.map((d) => ({
     value: d.id,
     label: d.nameAr || d.nameEn || d.id,
+  }));
+
+  const shiftOptions = shifts.map((shift) => ({
+    value: shift.id,
+    label: `${shift.name || shift.id}${shift.startTime && shift.endTime ? ` (${shift.startTime.slice(0, 5)}-${shift.endTime.slice(0, 5)})` : ''}`,
   }));
 
   const branchOptions = useMemo(
@@ -413,6 +422,24 @@ export default function HREmployeesPage() {
       title: 'القسم',
       key: 'departmentName',
       render: (_, r) => r.departmentNameAr || r.departmentNameEn || '—',
+    },
+    {
+      title: 'الوردية',
+      key: 'shiftName',
+      width: 180,
+      render: (_, r) =>
+        r.shiftName ? (
+          <Space orientation="vertical" size={0}>
+            <span>{r.shiftName}</span>
+            {r.shiftStartTime && r.shiftEndTime && (
+              <span style={{ color: '#888', fontSize: 12 }}>
+                {r.shiftStartTime.slice(0, 5)} - {r.shiftEndTime.slice(0, 5)}
+              </span>
+            )}
+          </Space>
+        ) : (
+          <Tag color="warning">بدون وردية</Tag>
+        ),
     },
     {
       title: 'الجنسية',
@@ -959,6 +986,18 @@ export default function HREmployeesPage() {
                   showSearch
                   placeholder="اختر المسمى الوظيفي"
                   options={positionOptions}
+                  filterOption={filterOption}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="shiftId" label="الوردية">
+                <Select
+                  allowClear
+                  showSearch
+                  placeholder="اختر الوردية"
+                  loading={isLoadingShifts}
+                  options={shiftOptions}
                   filterOption={filterOption}
                 />
               </Form.Item>

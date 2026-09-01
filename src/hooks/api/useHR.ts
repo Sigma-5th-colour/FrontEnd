@@ -6,6 +6,8 @@ import {
   HRLeaveService,
   HRLeaveTypeService,
   HRPayrollService,
+  HRShiftService,
+  HRReportService,
   HRPermissionRequestService,
   HRResignationRequestService,
   HRCustodyRequestService,
@@ -24,6 +26,10 @@ import type {
   CreateResignationRequestDto,
   CreateCustodyRequestDto,
   CreateCustodyTypeDto,
+  CreateShiftDto,
+  UpdateShiftDto,
+  AssignEmployeeShiftDto,
+  HRReportExportRequestDto,
 } from '@/types/hr.types';
 import { getCurrentPosition, GeolocationError, geolocationErrorMessage } from '@/utils/geolocation';
 import { extractApiError } from '@/lib/api/unwrap';
@@ -43,6 +49,8 @@ function attendanceErrorMessage(err: unknown, fallback: string): string {
 const QK = {
   employees: (params?: EmployeeListQuery) => ['hr-employees', params] as const,
   employee: (id: string) => ['hr-employee', id] as const,
+  shifts: (activeOnly?: boolean) => ['hr-shifts', activeOnly] as const,
+  employeeShift: (employeeId?: string) => ['hr-employee-shift', employeeId] as const,
   attendance: (filter: AttendanceFilterDto) => ['hr-attendance', filter] as const,
   leave: ['hr-leave'] as const,
   leaveBalance: (leaveTypeId: string) => ['hr-leave-balance', leaveTypeId] as const,
@@ -52,6 +60,15 @@ const QK = {
   payroll: (month: number, year: number) => ['hr-payroll', month, year] as const,
   payrollHistory: (year?: number) => ['hr-payroll-history', year] as const,
 };
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // ─── Employee hooks ───────────────────────────────────────────────────────────
 
@@ -139,6 +156,80 @@ export function useHREmployee(id: string) {
     queryKey: QK.employee(id),
     queryFn: () => HREmployeeService.getById(id),
     enabled: !!id,
+  });
+}
+
+// ─── Shift hooks ─────────────────────────────────────────────────────────────
+
+export function useHRShifts(activeOnly?: boolean, enabled = true) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: QK.shifts(activeOnly),
+    queryFn: () => HRShiftService.getAll(activeOnly),
+    enabled,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: CreateShiftDto) => HRShiftService.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-shifts'] });
+      message.success('تم إضافة الوردية بنجاح');
+    },
+    onError: (err) => message.error(extractApiError(err, 'فشل إضافة الوردية')),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateShiftDto }) => HRShiftService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-shifts'] });
+      message.success('تم تحديث الوردية بنجاح');
+    },
+    onError: (err) => message.error(extractApiError(err, 'فشل تحديث الوردية')),
+  });
+
+  const activeMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      HRShiftService.setActive(id, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-shifts'] });
+      message.success('تم تحديث حالة الوردية');
+    },
+    onError: (err) => message.error(extractApiError(err, 'فشل تحديث حالة الوردية')),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: (data: AssignEmployeeShiftDto) => HRShiftService.assign(data),
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['hr-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['hr-employees'] });
+      queryClient.invalidateQueries({ queryKey: QK.employee(vars.employeeId) });
+      queryClient.invalidateQueries({ queryKey: QK.employeeShift(vars.employeeId) });
+      message.success('تم تعيين الوردية للموظف');
+    },
+    onError: (err) => message.error(extractApiError(err, 'فشل تعيين الوردية')),
+  });
+
+  return {
+    shifts: query.data ?? [],
+    isLoading: query.isLoading,
+    refetch: query.refetch,
+    createShift: createMutation.mutateAsync,
+    updateShift: updateMutation.mutateAsync,
+    setShiftActive: activeMutation.mutateAsync,
+    assignShift: assignMutation.mutateAsync,
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isSettingActive: activeMutation.isPending,
+    isAssigning: assignMutation.isPending,
+  };
+}
+
+export function useHREmployeeShift(employeeId?: string) {
+  return useQuery({
+    queryKey: QK.employeeShift(employeeId),
+    queryFn: () => HRShiftService.getCurrentEmployeeShift(employeeId!),
+    enabled: !!employeeId,
   });
 }
 
@@ -366,7 +457,8 @@ export function useHRPermissionRequests() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => HRPermissionRequestService.reject(id),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      HRPermissionRequestService.reject(id, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr-permission-requests'] });
       message.success('تم رفض طلب الاستئذان');
@@ -376,14 +468,36 @@ export function useHRPermissionRequests() {
     },
   });
 
+  const withdrawMutation = useMutation({
+    mutationFn: (id: string) => HRPermissionRequestService.withdraw(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-permission-requests'] });
+      message.success('تم سحب طلب الاستئذان');
+    },
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل سحب الطلب'));
+    },
+  });
+
+  const printMutation = useMutation({
+    mutationFn: (id: string) => HRPermissionRequestService.print(id),
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل تحميل بيانات الطباعة'));
+    },
+  });
+
   return {
     permissionRequests: query.data ?? [],
     isLoading: query.isLoading,
     refetch: query.refetch,
     approvePermissionRequest: approveMutation.mutateAsync,
     rejectPermissionRequest: rejectMutation.mutateAsync,
+    withdrawPermissionRequest: withdrawMutation.mutateAsync,
+    printPermissionRequest: printMutation.mutateAsync,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
+    isWithdrawing: withdrawMutation.isPending,
+    isPrinting: printMutation.isPending,
   };
 }
 
@@ -422,7 +536,8 @@ export function useHRResignationRequests() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => HRResignationRequestService.reject(id),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      HRResignationRequestService.reject(id, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr-resignation-requests'] });
       message.success('تم رفض طلب الاستقالة');
@@ -432,14 +547,36 @@ export function useHRResignationRequests() {
     },
   });
 
+  const withdrawMutation = useMutation({
+    mutationFn: (id: string) => HRResignationRequestService.withdraw(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-resignation-requests'] });
+      message.success('تم سحب طلب الاستقالة');
+    },
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل سحب الطلب'));
+    },
+  });
+
+  const printMutation = useMutation({
+    mutationFn: (id: string) => HRResignationRequestService.print(id),
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل تحميل بيانات الطباعة'));
+    },
+  });
+
   return {
     resignationRequests: query.data ?? [],
     isLoading: query.isLoading,
     refetch: query.refetch,
     approveResignationRequest: approveMutation.mutateAsync,
     rejectResignationRequest: rejectMutation.mutateAsync,
+    withdrawResignationRequest: withdrawMutation.mutateAsync,
+    printResignationRequest: printMutation.mutateAsync,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
+    isWithdrawing: withdrawMutation.isPending,
+    isPrinting: printMutation.isPending,
   };
 }
 
@@ -506,7 +643,8 @@ export function useHRCustodyRequests() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => HRCustodyRequestService.reject(id),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      HRCustodyRequestService.reject(id, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hr-custody-requests'] });
       message.success('تم رفض طلب العهدة');
@@ -516,15 +654,51 @@ export function useHRCustodyRequests() {
     },
   });
 
+  const withdrawMutation = useMutation({
+    mutationFn: (id: string) => HRCustodyRequestService.withdraw(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hr-custody-requests'] });
+      message.success('تم سحب طلب العهدة');
+    },
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل سحب الطلب'));
+    },
+  });
+
+  const printMutation = useMutation({
+    mutationFn: (id: string) => HRCustodyRequestService.print(id),
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل تحميل بيانات الطباعة'));
+    },
+  });
+
   return {
     custodyRequests: query.data ?? [],
     isLoading: query.isLoading,
     refetch: query.refetch,
     approveCustodyRequest: approveMutation.mutateAsync,
     rejectCustodyRequest: rejectMutation.mutateAsync,
+    withdrawCustodyRequest: withdrawMutation.mutateAsync,
+    printCustodyRequest: printMutation.mutateAsync,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
+    isWithdrawing: withdrawMutation.isPending,
+    isPrinting: printMutation.isPending,
   };
+}
+
+// ─── HR Report hooks ─────────────────────────────────────────────────────────
+
+export function useHRReportExport() {
+  return useMutation({
+    mutationFn: (dto: HRReportExportRequestDto) => HRReportService.exportExcel(dto),
+    onSuccess: (blob, vars) => {
+      downloadBlob(blob, `HR-${vars.reportType}-${Date.now()}.xlsx`);
+    },
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل تصدير تقرير الموارد البشرية'));
+    },
+  });
 }
 
 // ─── Payroll hooks ────────────────────────────────────────────────────────────

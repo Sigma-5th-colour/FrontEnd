@@ -39,6 +39,12 @@ export const APP_PERMISSIONS = {
   HR_FULL_ACCESS: 'HR.FullAccess',
   HR_VIEW: 'HR.View',
   HR_MANAGE: 'HR.Manage',
+  HR_SELF_SERVICE_SUBMIT: 'HR.SelfService.Submit',
+  HR_APPROVE_UNIT_MANAGER: 'HR.Approve.UnitManager',
+  HR_APPROVE_HR_MANAGER: 'HR.Approve.HRManager',
+  HR_APPROVE_EXECUTIVE_MANAGER: 'HR.Approve.ExecutiveManager',
+  HR_SHIFT_MANAGE: 'HR.Shift.Manage',
+  HR_REPORT_EXPORT: 'HR.Report.Export',
   ADMINISTRATION_MANAGE: 'Administration.Manage',
   SYSTEM_FULL_ACCESS: 'System.FullAccess',
 } as const;

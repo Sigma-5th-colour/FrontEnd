@@ -15,35 +15,34 @@ import {
   Statistic,
   Input,
   Select,
+  Modal,
+  Form,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   CheckOutlined,
   CloseOutlined,
   ClockCircleOutlined,
+  PrinterOutlined,
   ReloadOutlined,
+  RollbackOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { AdvancedFilterPanel } from '@/components/filters';
 import { useHRPermissionRequests } from '@/hooks/api/useHR';
 import { useHrActionGates } from '@/hooks/useActionPermissionGates';
-import { RequestStatus, type PermissionRequestDto } from '@/types/hr.types';
+import { RequestStatus, type HRRequestPrintDto, type PermissionRequestDto } from '@/types/hr.types';
+import {
+  ApprovalStageTag,
+  ApprovalSteps,
+  PrintPreview,
+  RequestStatusTag,
+  canActOnApprovalStage,
+} from '../_components/requestWorkflow';
 import styles from './PermissionRequests.module.css';
 
 const { Title } = Typography;
-
-// Status enum is 1=Approved, 2=Rejected, 3=Pending (verified live) — see RequestStatus.
-const STATUS_COLOR: Record<number, string> = {
-  [RequestStatus.Pending]: 'warning',
-  [RequestStatus.Approved]: 'success',
-  [RequestStatus.Rejected]: 'error',
-};
-const STATUS_LABEL: Record<number, string> = {
-  [RequestStatus.Pending]: 'قيد الانتظار',
-  [RequestStatus.Approved]: 'موافق عليه',
-  [RequestStatus.Rejected]: 'مرفوض',
-};
 
 const TYPE_LABEL: Record<number, string> = {
   1: 'تأخير صباحي',
@@ -58,31 +57,65 @@ const NATURE_LABEL: Record<number, string> = {
 
 export default function PermissionRequestsPage() {
   const hrGates = useHrActionGates();
+  const [rejectForm] = Form.useForm();
   const {
     permissionRequests,
     isLoading,
     refetch,
     approvePermissionRequest,
     rejectPermissionRequest,
+    withdrawPermissionRequest,
+    printPermissionRequest,
     isApproving,
     isRejecting,
+    isWithdrawing,
+    isPrinting,
   } = useHRPermissionRequests();
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const [searchText, setSearchText] = useState('');
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [rejectRecord, setRejectRecord] = useState<PermissionRequestDto | null>(null);
+  const [printData, setPrintData] = useState<HRRequestPrintDto | null>(null);
 
   const runAction = (id: string, fn: (id: string) => Promise<unknown>) => {
-    if (!hrGates.canManage) return Promise.resolve();
     setActioningId(id);
     return fn(id)
       .catch(() => {})
       .finally(() => setActioningId(null));
   };
 
+  const handleReject = async () => {
+    if (!rejectRecord) return;
+    try {
+      const values = await rejectForm.validateFields();
+      setActioningId(rejectRecord.id);
+      await rejectPermissionRequest({ id: rejectRecord.id, reason: values.reason });
+      setRejectRecord(null);
+      rejectForm.resetFields();
+    } catch {
+      // Validation and mutation errors are displayed by antd / hooks.
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handlePrint = async (id: string) => {
+    setActioningId(id);
+    try {
+      const data = await printPermissionRequest(id);
+      setPrintData(data);
+    } catch {
+      // Hook displays the API error.
+    } finally {
+      setActioningId(null);
+    }
+  };
+
   const pendingCount  = permissionRequests.filter((r) => r.status === RequestStatus.Pending).length;
   const approvedCount = permissionRequests.filter((r) => r.status === RequestStatus.Approved).length;
   const rejectedCount = permissionRequests.filter((r) => r.status === RequestStatus.Rejected).length;
+  const withdrawnCount = permissionRequests.filter((r) => r.status === RequestStatus.Withdrawn).length;
 
   const filteredRequests = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -143,18 +176,49 @@ export default function PermissionRequestsPage() {
       title: 'الحالة',
       dataIndex: 'status',
       width: 130,
-      render: (v: number) => (
-        <Tag color={STATUS_COLOR[v] ?? 'default'}>{STATUS_LABEL[v] ?? `حالة ${v}`}</Tag>
-      ),
+      render: (v: number) => <RequestStatusTag status={v} />,
+    },
+    {
+      title: 'مرحلة الاعتماد',
+      dataIndex: 'approval',
+      width: 170,
+      render: (_, record) => <ApprovalStageTag approval={record.approval} />,
     },
     {
       title: 'الإجراءات',
       key: 'actions',
-      width: 100,
+      width: 170,
       render: (_, record) => {
-        if (record.status !== RequestStatus.Pending || !hrGates.canManage) return null;
+        const canApprove = canActOnApprovalStage(record, hrGates);
+        const isPending = record.status === RequestStatus.Pending;
         return (
           <Space>
+            <Tooltip title="طباعة">
+              <Button
+                type="text"
+                icon={<PrinterOutlined />}
+                loading={isPrinting && actioningId === record.id}
+                onClick={() => handlePrint(record.id)}
+              />
+            </Tooltip>
+            {isPending && (
+              <Tooltip title="سحب الطلب">
+                <Popconfirm
+                  title="سحب طلب الاستئذان؟"
+                  onConfirm={() => runAction(record.id, withdrawPermissionRequest)}
+                  okText="سحب"
+                  cancelText="إلغاء"
+                >
+                  <Button
+                    type="text"
+                    icon={<RollbackOutlined />}
+                    loading={isWithdrawing && actioningId === record.id}
+                  />
+                </Popconfirm>
+              </Tooltip>
+            )}
+            {canApprove && (
+              <>
             <Tooltip title="موافقة">
               <Popconfirm
                 title="تأكيد الموافقة على طلب الاستئذان؟"
@@ -171,21 +235,16 @@ export default function PermissionRequestsPage() {
               </Popconfirm>
             </Tooltip>
             <Tooltip title="رفض">
-              <Popconfirm
-                title="تأكيد رفض طلب الاستئذان؟"
-                onConfirm={() => runAction(record.id, rejectPermissionRequest)}
-                okText="رفض"
-                cancelText="إلغاء"
-                okButtonProps={{ danger: true }}
-              >
                 <Button
                   type="text"
                   danger
                   icon={<CloseOutlined />}
+                  onClick={() => setRejectRecord(record)}
                   loading={isRejecting && actioningId === record.id}
                 />
-              </Popconfirm>
             </Tooltip>
+              </>
+            )}
           </Space>
         );
       },
@@ -218,6 +277,11 @@ export default function PermissionRequestsPage() {
             <Statistic title="مرفوضة" value={rejectedCount} styles={{ content: { color: '#ff4d4f' } }} />
           </Card>
         </Col>
+        <Col xs={8}>
+          <Card size="small">
+            <Statistic title="مسحوبة" value={withdrawnCount} styles={{ content: { color: '#8c8c8c' } }} />
+          </Card>
+        </Col>
       </Row>
 
       <AdvancedFilterPanel
@@ -248,6 +312,7 @@ export default function PermissionRequestsPage() {
                   { value: RequestStatus.Pending, label: 'قيد الانتظار' },
                   { value: RequestStatus.Approved, label: 'موافق عليه' },
                   { value: RequestStatus.Rejected, label: 'مرفوض' },
+                  { value: RequestStatus.Withdrawn, label: 'مسحوب' },
                 ]}
               />
             </div>
@@ -275,6 +340,39 @@ export default function PermissionRequestsPage() {
           scroll={{ x: 900 }}
         />
       </Card>
+
+      <Modal
+        open={!!rejectRecord}
+        title="رفض طلب الاستئذان"
+        onCancel={() => {
+          setRejectRecord(null);
+          rejectForm.resetFields();
+        }}
+        onOk={handleReject}
+        confirmLoading={isRejecting && actioningId === rejectRecord?.id}
+        okText="رفض"
+        cancelText="إلغاء"
+        okButtonProps={{ danger: true }}
+        destroyOnHidden
+      >
+        {rejectRecord && <ApprovalSteps approval={rejectRecord.approval} />}
+        <Form form={rejectForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item name="reason" label="سبب الرفض" rules={[{ required: true, message: 'سبب الرفض مطلوب' }]}>
+            <Input.TextArea rows={4} maxLength={1000} showCount />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={!!printData}
+        title="معاينة الطباعة"
+        onCancel={() => setPrintData(null)}
+        footer={<Button onClick={() => window.print()} icon={<PrinterOutlined />}>طباعة</Button>}
+        width={760}
+        destroyOnHidden
+      >
+        {printData && <PrintPreview data={printData} />}
+      </Modal>
     </div>
   );
 }
