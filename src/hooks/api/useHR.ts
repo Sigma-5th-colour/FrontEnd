@@ -348,6 +348,13 @@ export function useHRLeave() {
     },
   });
 
+  const printMutation = useMutation({
+    mutationFn: (requestId: string) => HRLeaveService.print(requestId),
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل تحميل بيانات الطباعة'));
+    },
+  });
+
   return {
     leaveRequests: query.data ?? [],
     isLoading: query.isLoading,
@@ -356,10 +363,12 @@ export function useHRLeave() {
     approveLeave: approveMutation.mutateAsync,
     rejectLeave: rejectMutation.mutateAsync,
     withdrawLeave: withdrawMutation.mutateAsync,
+    printLeave: printMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
     isWithdrawing: withdrawMutation.isPending,
+    isPrinting: printMutation.isPending,
   };
 }
 

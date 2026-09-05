@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Card,
-  Table,
   Button,
   Space,
   Modal,
@@ -17,6 +16,9 @@ import {
   Col,
   Statistic,
   Popconfirm,
+  Empty,
+  Pagination,
+  Spin,
 } from 'antd';
 import {
   PlusOutlined,
@@ -26,16 +28,17 @@ import {
   SearchOutlined,
   ReloadOutlined,
   RollbackOutlined,
+  PrinterOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { AdvancedFilterPanel } from '@/components/filters';
 import { useHRLeave, useHRLeaveTypes, useHREmployees } from '@/hooks/api/useHR';
 import { useHrActionGates } from '@/hooks/useActionPermissionGates';
-import { RequestStatus, type LeaveRequestDto, type CreateLeaveRequestDto } from '@/types/hr.types';
+import { RequestStatus, type HRRequestPrintDto, type LeaveRequestDto, type CreateLeaveRequestDto } from '@/types/hr.types';
 import {
   ApprovalStageTag,
   ApprovalSteps,
+  PrintPreview,
   RequestStatusTag,
   canActOnApprovalStage,
 } from '@/app/hr/_components/requestWorkflow';
@@ -48,10 +51,13 @@ const { TextArea } = Input;
 export default function HRLeavePage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [rejectRecord, setRejectRecord] = useState<LeaveRequestDto | null>(null);
+  const [printData, setPrintData] = useState<HRRequestPrintDto | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [form] = Form.useForm();
   const [rejectForm] = Form.useForm();
   const hrGates = useHrActionGates();
+  const pageSize = 10;
 
   const {
     leaveRequests,
@@ -60,11 +66,13 @@ export default function HRLeavePage() {
     approveLeave,
     rejectLeave,
     withdrawLeave,
+    printLeave,
     refetch,
     isCreating,
     isApproving,
     isRejecting,
     isWithdrawing,
+    isPrinting,
   } = useHRLeave();
 
   const { leaveTypes } = useHRLeaveTypes();
@@ -109,6 +117,18 @@ export default function HRLeavePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leaveRequests, statusFilter, searchText, employeeNameById, leaveTypeNameById]);
 
+  const paginatedRequests = useMemo(
+    () => filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredRequests, currentPage, pageSize]
+  );
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [currentPage, filteredRequests.length, pageSize]);
+
   const handleCreate = async () => {
     if (!hrGates.canSubmitRequest) return;
     try {
@@ -150,124 +170,75 @@ export default function HRLeavePage() {
     }
   };
 
-  const columns: ColumnsType<LeaveRequestDto> = [
-    {
-      title: 'الموظف',
-      dataIndex: 'employeeName',
-      render: (_, r) => resolveEmployeeName(r),
-    },
-    {
-      title: 'نوع الإجازة',
-      dataIndex: 'leaveTypeName',
-      render: (_, r) => resolveLeaveTypeName(r),
-    },
-    {
-      title: 'من تاريخ',
-      dataIndex: 'fromDate',
-      width: 120,
-      render: (v) => (v ? dayjs(v).format('YYYY/MM/DD') : '—'),
-    },
-    {
-      title: 'إلى تاريخ',
-      dataIndex: 'toDate',
-      width: 120,
-      render: (v) => (v ? dayjs(v).format('YYYY/MM/DD') : '—'),
-    },
-    {
-      title: 'عدد الأيام',
-      dataIndex: 'daysCount',
-      width: 90,
-      render: (v) => (v != null ? `${v} يوم` : '—'),
-    },
-    {
-      title: 'السبب',
-      dataIndex: 'reason',
-      render: (v) => v || '—',
-      ellipsis: true,
-    },
-    {
-      title: 'الحالة',
-      dataIndex: 'status',
-      width: 130,
-      render: (v: number | null | undefined) => <RequestStatusTag status={v} />,
-    },
-    {
-      title: 'مرحلة الاعتماد',
-      dataIndex: 'approval',
-      width: 170,
-      render: (_, record) => <ApprovalStageTag approval={record.approval} />,
-    },
-    {
-      title: 'مسار الاعتماد',
-      dataIndex: 'approval',
-      width: 360,
-      render: (_, record) => <ApprovalSteps approval={record.approval} />,
-    },
-    {
-      title: 'الإجراءات',
-      key: 'actions',
-      width: 180,
-      fixed: 'right',
-      render: (_, record) => {
-        const isPending = record.status === RequestStatus.Pending;
-        const canApproveThisStage = canActOnApprovalStage(record, hrGates);
-        const canWithdraw = isPending && (hrGates.canSubmitRequest || hrGates.canManage);
+  const handlePrint = async (id: string) => {
+    setActioningId(id);
+    try {
+      const data = await printLeave(id);
+      setPrintData(data);
+    } catch {
+      // Hook displays the API error.
+    } finally {
+      setActioningId(null);
+    }
+  };
 
-        if (!canApproveThisStage && !canWithdraw) {
-          return <span style={{ color: '#bbb' }}>—</span>;
-        }
+  const renderActions = (record: LeaveRequestDto) => {
+    const isPending = record.status === RequestStatus.Pending;
+    const canApproveThisStage = canActOnApprovalStage(record, hrGates);
+    const canWithdraw = isPending && (hrGates.canSubmitRequest || hrGates.canManage);
 
-        return (
-          <Space>
-            {canWithdraw && (
-              <Tooltip title="سحب الطلب">
-                <Popconfirm
-                  title="تأكيد سحب طلب الإجازة؟"
-                  onConfirm={() => runAction(record.id, () => withdrawLeave(record.id))}
-                  okText="سحب"
-                  cancelText="إلغاء"
-                >
-                  <Button
-                    type="text"
-                    icon={<RollbackOutlined />}
-                    loading={isWithdrawing && actioningId === record.id}
-                  />
-                </Popconfirm>
-              </Tooltip>
-            )}
-            {canApproveThisStage && (
-              <>
-                <Tooltip title="موافقة على المرحلة الحالية">
-                  <Popconfirm
-                    title="تأكيد الموافقة على المرحلة الحالية؟"
-                    onConfirm={() => runAction(record.id, () => approveLeave({ requestId: record.id }))}
-                    okText="موافقة"
-                    cancelText="إلغاء"
-                  >
-                    <Button
-                      type="text"
-                      icon={<CheckOutlined />}
-                      style={{ color: '#52c41a' }}
-                      loading={isApproving && actioningId === record.id}
-                    />
-                  </Popconfirm>
-                </Tooltip>
-                <Tooltip title="رفض">
-                  <Button
-                    type="text"
-                    danger
-                    icon={<CloseOutlined />}
-                    onClick={() => setRejectRecord(record)}
-                    loading={isRejecting && actioningId === record.id}
-                  />
-                </Tooltip>
-              </>
-            )}
-          </Space>
-        );
-      },
-    },
-  ];
+    return (
+      <Space wrap>
+        <Tooltip title="طباعة">
+          <Button
+            icon={<PrinterOutlined />}
+            loading={isPrinting && actioningId === record.id}
+            onClick={() => handlePrint(record.id)}
+          >
+            طباعة
+          </Button>
+        </Tooltip>
+        {canWithdraw && (
+          <Popconfirm
+            title="تأكيد سحب طلب الإجازة؟"
+            onConfirm={() => runAction(record.id, () => withdrawLeave(record.id))}
+            okText="سحب"
+            cancelText="إلغاء"
+          >
+            <Button icon={<RollbackOutlined />} loading={isWithdrawing && actioningId === record.id}>
+              سحب الطلب
+            </Button>
+          </Popconfirm>
+        )}
+        {canApproveThisStage && (
+          <>
+            <Popconfirm
+              title="تأكيد الموافقة على المرحلة الحالية؟"
+              onConfirm={() => runAction(record.id, () => approveLeave({ requestId: record.id }))}
+              okText="موافقة"
+              cancelText="إلغاء"
+            >
+              <Button
+                icon={<CheckOutlined />}
+                style={{ color: '#52c41a' }}
+                loading={isApproving && actioningId === record.id}
+              >
+                موافقة
+              </Button>
+            </Popconfirm>
+            <Button
+              danger
+              icon={<CloseOutlined />}
+              onClick={() => setRejectRecord(record)}
+              loading={isRejecting && actioningId === record.id}
+            >
+              رفض
+            </Button>
+          </>
+        )}
+      </Space>
+    );
+  };
 
   return (
     <div style={{ padding: 24 }}>
@@ -319,6 +290,7 @@ export default function HRLeavePage() {
         onClear={() => {
           setStatusFilter(undefined);
           setSearchText('');
+          setCurrentPage(1);
         }}
         quickFilters={
           <>
@@ -328,7 +300,10 @@ export default function HRLeavePage() {
               prefix={<SearchOutlined />}
               style={{ width: 300 }}
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setCurrentPage(1);
+              }}
             />
             <div>
               <label className={styles.filterLabel}>تصفية بالحالة</label>
@@ -337,7 +312,10 @@ export default function HRLeavePage() {
                 allowClear
                 style={{ width: 180 }}
                 value={statusFilter}
-                onChange={(v) => setStatusFilter(v)}
+                onChange={(v) => {
+                  setStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 options={[
                   { value: RequestStatus.Pending, label: 'قيد الانتظار' },
                   { value: RequestStatus.Approved, label: 'موافق عليه' },
@@ -350,26 +328,96 @@ export default function HRLeavePage() {
         }
       />
 
-      <Card>
-        <Table<LeaveRequestDto>
-          dataSource={filteredRequests}
-          columns={columns}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{
-            pageSize: 15,
-            showSizeChanger: false,
-            showTotal: (total) => `إجمالي: ${total} طلب`,
-          }}
-          locale={{
-            emptyText:
-              statusFilter != null || searchText
-                ? 'لا توجد نتائج مطابقة'
-                : 'لا توجد طلبات إجازة',
-          }}
-          scroll={{ x: 1350 }}
-        />
-      </Card>
+      <Spin spinning={isLoading}>
+        {filteredRequests.length === 0 ? (
+          <Card>
+            <Empty
+              description={
+                statusFilter != null || searchText
+                  ? 'لا توجد نتائج مطابقة'
+                  : 'لا توجد طلبات إجازة'
+              }
+            />
+          </Card>
+        ) : (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            {paginatedRequests.map((record, index) => (
+              <Card
+                key={record.id}
+                className={styles.requestCard}
+                title={
+                  <Space direction="vertical" size={4}>
+                    <Space wrap>
+                      <span className={styles.requestNumber}>
+                        #{(currentPage - 1) * pageSize + index + 1}
+                      </span>
+                      <strong>{resolveEmployeeName(record)}</strong>
+                    </Space>
+                    <span className={styles.requestSubtitle}>{resolveLeaveTypeName(record)}</span>
+                  </Space>
+                }
+                extra={
+                  <Space wrap>
+                    <RequestStatusTag status={record.status} />
+                    <ApprovalStageTag approval={record.approval} />
+                  </Space>
+                }
+              >
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} md={14} lg={16}>
+                    <Row gutter={[12, 12]}>
+                      <Col xs={12} sm={8}>
+                        <div className={styles.detailItem}>
+                          <span>من تاريخ</span>
+                          <strong>{record.fromDate ? dayjs(record.fromDate).format('YYYY/MM/DD') : '—'}</strong>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={8}>
+                        <div className={styles.detailItem}>
+                          <span>إلى تاريخ</span>
+                          <strong>{record.toDate ? dayjs(record.toDate).format('YYYY/MM/DD') : '—'}</strong>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={8}>
+                        <div className={styles.detailItem}>
+                          <span>عدد الأيام</span>
+                          <strong>{record.daysCount != null ? `${record.daysCount} يوم` : '—'}</strong>
+                        </div>
+                      </Col>
+                      <Col xs={24}>
+                        <div className={styles.reasonBlock}>
+                          <span>السبب</span>
+                          <p>{record.reason || '—'}</p>
+                        </div>
+                      </Col>
+                    </Row>
+                  </Col>
+
+                  <Col xs={24} md={10} lg={8}>
+                    <div className={styles.approvalPanel}>
+                      <div className={styles.approvalTitle}>مسار الاعتماد</div>
+                      <ApprovalSteps approval={record.approval} />
+                    </div>
+                  </Col>
+                </Row>
+
+                <div className={styles.cardActions}>{renderActions(record)}</div>
+              </Card>
+            ))}
+
+            <div className={styles.paginationBar}>
+              <span>إجمالي: {filteredRequests.length} طلب</span>
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={filteredRequests.length}
+                showSizeChanger={false}
+                onChange={setCurrentPage}
+              />
+            </div>
+          </Space>
+        )}
+      </Spin>
 
       <Modal
         open={createModalOpen && hrGates.canSubmitRequest}
@@ -471,6 +519,17 @@ export default function HRLeavePage() {
             <TextArea rows={3} maxLength={500} showCount placeholder="اكتب سبب الرفض..." />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        open={!!printData}
+        title="معاينة الطباعة"
+        onCancel={() => setPrintData(null)}
+        footer={<Button onClick={() => window.print()} icon={<PrinterOutlined />}>طباعة</Button>}
+        width={760}
+        destroyOnHidden
+      >
+        {printData && <PrintPreview data={printData} />}
       </Modal>
     </div>
   );

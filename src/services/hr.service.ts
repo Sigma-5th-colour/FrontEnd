@@ -232,6 +232,11 @@ export class HRLeaveService {
     await api.post(API_ENDPOINTS.HR_LEAVE.WITHDRAW(requestId), {});
   }
 
+  static async print(requestId: string): Promise<HRRequestPrintDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_LEAVE.PRINT(requestId));
+    return unwrap<HRRequestPrintDto>(response.data);
+  }
+
   static async getEmployeeBalances(params: {
     employeeId?: string;
     leaveTypeId?: string;

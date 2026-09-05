@@ -433,6 +433,7 @@ export const API_ENDPOINTS = {
     REJECT: (requestId: string) => `/api/V1/Leave/${requestId}/reject`,
     WITHDRAW: (requestId: string) => `/api/V1/Leave/${requestId}/withdraw`,
     CANCEL: (requestId: string) => `/api/V1/Leave/${requestId}/cancel`,
+    PRINT: (requestId: string) => `/api/V1/VacationRequest/Print/${requestId}`,
   },
 
   HR_LEAVE_TYPE: {
