@@ -308,15 +308,18 @@ export interface AttendanceRecord {
 //   0 = Pending, 1 = Approved, 2 = Rejected, 3 = Cancelled
 // NOTE: this is 0-based, unlike Permission/Resignation/Custody which are 1-based.
 export const LeaveStatus = {
-  Pending: 0,
+  Unspecified: 0,
   Approved: 1,
   Rejected: 2,
-  Cancelled: 3,
+  Pending: 3,
+  Withdrawn: 4,
+  Cancelled: 4,
 } as const;
 
 export type LeaveRequestStatus = number;
 
 export interface CreateLeaveRequestDto {
+  employeeId?: string | null;
   leaveTypeId: string;
   fromDate: string;
   toDate: string;
@@ -325,11 +328,11 @@ export interface CreateLeaveRequestDto {
 }
 
 export interface ApproveLeaveDto {
-  approvalComment?: string | null;
+  reason?: string | null;
 }
 
 export interface RejectLeaveDto {
-  approvalComment?: string | null;
+  reason: string;
 }
 
 export interface LeaveRequestDto {
@@ -343,8 +346,7 @@ export interface LeaveRequestDto {
   daysCount?: number | null;
   reason?: string | null;
   status?: LeaveRequestStatus | null;
-  approvedAt?: string | null;
-  approvalComment?: string | null;
+  approval?: HRApprovalDto | null;
 }
 
 // ==================== Leave Type Types ====================
@@ -392,9 +394,12 @@ export interface EmployeeLeaveBalanceDto {
 // in hr.service.ts) only make the endpoints reachable. Building the actual
 // inbox/outbox screens is out of scope for this pass.
 
-// HRProcessState is a numeric enum (values 1-8); the spec does not surface
-// string labels for it, so it's kept as an opaque number until product defines
-// the mapping.
+export const HRProcessState = {
+  Leave: 9,
+} as const;
+
+// Other process states still arrive as numeric values; Leave is now confirmed
+// as 9 for the unified HR inbox/outbox filters.
 export type HRProcessState = number;
 
 export interface FilterInboxDto {

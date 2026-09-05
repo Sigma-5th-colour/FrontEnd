@@ -23,6 +23,7 @@ const ROUTE_TITLES: Array<[string, Title]> = [
   ['/register', { ar: 'إضافة مسؤول', en: 'Add Admin' }],
   ['/change-password', { ar: 'تغيير كلمة المرور', en: 'Change Password' }],
   ['/dashboard', { ar: 'الرئيسية', en: 'Dashboard' }],
+  ['/notifications', { ar: 'الإشعارات', en: 'Notifications' }],
 
   // Branches
   ['/branch/management', { ar: 'إدارة الفروع', en: 'Branches' }],

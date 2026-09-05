@@ -19,12 +19,16 @@ const nextConfig = {
 
     const resolvedBackendUrl = backendUrl || 'https://sigma-api.runasp.net';
     // eslint-disable-next-line no-console
-    console.log(`[next.config] Proxying /api/* and /health -> ${resolvedBackendUrl}`);
+    console.log(`[next.config] Proxying /api/*, /hubs/* and /health -> ${resolvedBackendUrl}`);
 
     return [
       {
         source: '/api/:path*',
         destination: `${resolvedBackendUrl}/api/:path*`,
+      },
+      {
+        source: '/hubs/:path*',
+        destination: `${resolvedBackendUrl}/hubs/:path*`,
       },
       {
         source: '/health',

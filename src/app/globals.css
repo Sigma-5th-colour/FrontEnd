@@ -90,3 +90,40 @@ select:focus {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .hr-request-print-area,
+  .hr-request-print-area * {
+    visibility: visible !important;
+  }
+
+  .hr-request-print-area {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    min-height: 100%;
+    padding: 0;
+    overflow: visible;
+    background: #fff;
+    direction: rtl;
+    color: #000;
+  }
+
+  .hr-request-print-area .ant-descriptions,
+  .hr-request-print-area .ant-steps {
+    break-inside: avoid;
+  }
+}

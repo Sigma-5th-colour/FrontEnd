@@ -43,6 +43,7 @@ const hrSelfService = [...EMPLOYEE_SELF_SERVICE_ROLES];
 
 export const DEFAULT_ROLE_PAGE_MATRIX: PermissionMatrix = {
   '/dashboard': allStaff,
+  '/notifications': allStaff,
   '/branch/management': [],
   '/customers': customerServiceAndFollowUp,
   '/complaints': customerServiceAndFollowUp,

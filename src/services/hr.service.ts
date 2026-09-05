@@ -209,6 +209,11 @@ export class HRLeaveService {
     await api.post(API_ENDPOINTS.HR_LEAVE.CREATE, data);
   }
 
+  static async getById(requestId: string): Promise<LeaveRequestDto> {
+    const response = await api.get<any>(API_ENDPOINTS.HR_LEAVE.GET_BY_ID(requestId));
+    return unwrap<LeaveRequestDto>(response.data);
+  }
+
   static async getBalance(leaveTypeId: string): Promise<number> {
     const response = await api.get<any>(API_ENDPOINTS.HR_LEAVE.GET_BALANCE(leaveTypeId));
     const raw = unwrap<any>(response.data);
@@ -216,11 +221,15 @@ export class HRLeaveService {
   }
 
   static async approve(requestId: string, dto?: ApproveLeaveDto): Promise<void> {
-    await api.put(API_ENDPOINTS.HR_LEAVE.APPROVE(requestId), dto ?? {});
+    await api.post(API_ENDPOINTS.HR_LEAVE.APPROVE(requestId), dto ?? {});
   }
 
   static async reject(requestId: string, dto?: RejectLeaveDto): Promise<void> {
-    await api.put(API_ENDPOINTS.HR_LEAVE.REJECT(requestId), dto ?? {});
+    await api.post(API_ENDPOINTS.HR_LEAVE.REJECT(requestId), dto ?? {});
+  }
+
+  static async withdraw(requestId: string): Promise<void> {
+    await api.post(API_ENDPOINTS.HR_LEAVE.WITHDRAW(requestId), {});
   }
 
   static async getEmployeeBalances(params: {

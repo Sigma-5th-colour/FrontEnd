@@ -426,10 +426,13 @@ export const API_ENDPOINTS = {
   HR_LEAVE: {
     GET_ALL: '/api/V1/Leave',
     CREATE: '/api/V1/Leave',
+    GET_BY_ID: (requestId: string) => `/api/V1/Leave/${requestId}`,
     GET_BALANCE: (leaveTypeId: string) => `/api/V1/Leave/balance/${leaveTypeId}`,
     EMPLOYEE_BALANCES: '/api/V1/Leave/employee-balances',
     APPROVE: (requestId: string) => `/api/V1/Leave/${requestId}/approve`,
     REJECT: (requestId: string) => `/api/V1/Leave/${requestId}/reject`,
+    WITHDRAW: (requestId: string) => `/api/V1/Leave/${requestId}/withdraw`,
+    CANCEL: (requestId: string) => `/api/V1/Leave/${requestId}/cancel`,
   },
 
   HR_LEAVE_TYPE: {
@@ -486,6 +489,15 @@ export const API_ENDPOINTS = {
 
   HR_REPORT: {
     EXPORT: '/api/V1/HRReport/export',
+  },
+
+  NOTIFICATIONS: {
+    GET_ALL: '/api/V1/Notifications',
+    UNREAD: '/api/V1/Notifications/unread',
+    UNREAD_COUNT: '/api/V1/Notifications/unread-count',
+    MARK_READ: (id: string) => `/api/V1/Notifications/${id}/read`,
+    READ_ALL: '/api/V1/Notifications/read-all',
+    DELETE: (id: string) => `/api/V1/Notifications/${id}`,
   },
 
   // Plumbing only — no inbox/outbox UI feature exists yet in the HR module

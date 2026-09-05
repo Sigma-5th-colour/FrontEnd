@@ -106,25 +106,27 @@ export function PrintPreview({ data }: { data: HRRequestPrintDto }) {
   const detailEntries = Object.entries(data.details ?? {});
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Descriptions title={<Space><PrinterOutlined />بيانات الطباعة</Space>} bordered column={2} size="small">
-        <Descriptions.Item label="نوع الطلب">{data.requestType || '—'}</Descriptions.Item>
-        <Descriptions.Item label="الحالة"><RequestStatusTag status={data.status} /></Descriptions.Item>
-        <Descriptions.Item label="الموظف">{data.employeeName || '—'}</Descriptions.Item>
-        <Descriptions.Item label="رقم الموظف">{data.employeeNumber || '—'}</Descriptions.Item>
-        <Descriptions.Item label="القسم">{data.departmentName || '—'}</Descriptions.Item>
-        <Descriptions.Item label="تاريخ الإنشاء">{data.createdAt || '—'}</Descriptions.Item>
-      </Descriptions>
-      <ApprovalSteps approval={data.approval} />
-      {detailEntries.length > 0 && (
-        <Descriptions title="تفاصيل الطلب" bordered column={1} size="small">
-          {detailEntries.map(([key, value]) => (
-            <Descriptions.Item key={key} label={key}>
-              {value == null || value === '' ? '—' : String(value)}
-            </Descriptions.Item>
-          ))}
+    <div className="hr-request-print-area">
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Descriptions title={<Space><PrinterOutlined />بيانات الطباعة</Space>} bordered column={2} size="small">
+          <Descriptions.Item label="نوع الطلب">{data.requestType || '—'}</Descriptions.Item>
+          <Descriptions.Item label="الحالة"><RequestStatusTag status={data.status} /></Descriptions.Item>
+          <Descriptions.Item label="الموظف">{data.employeeName || '—'}</Descriptions.Item>
+          <Descriptions.Item label="رقم الموظف">{data.employeeNumber || '—'}</Descriptions.Item>
+          <Descriptions.Item label="القسم">{data.departmentName || '—'}</Descriptions.Item>
+          <Descriptions.Item label="تاريخ الإنشاء">{data.createdAt || '—'}</Descriptions.Item>
         </Descriptions>
-      )}
-    </Space>
+        <ApprovalSteps approval={data.approval} />
+        {detailEntries.length > 0 && (
+          <Descriptions title="تفاصيل الطلب" bordered column={1} size="small">
+            {detailEntries.map(([key, value]) => (
+              <Descriptions.Item key={key} label={key}>
+                {value == null || value === '' ? '—' : String(value)}
+              </Descriptions.Item>
+            ))}
+          </Descriptions>
+        )}
+      </Space>
+    </div>
   );
 }

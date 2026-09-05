@@ -314,11 +314,11 @@ export function useHRLeave() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: ({ requestId, approvalComment }: { requestId: string; approvalComment?: string }) =>
-      HRLeaveService.approve(requestId, { approvalComment }),
+    mutationFn: ({ requestId }: { requestId: string }) =>
+      HRLeaveService.approve(requestId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.leave });
-      message.success('تمت الموافقة على الإجازة');
+      message.success('تمت الموافقة على المرحلة الحالية');
     },
     onError: (err) => {
       message.error(extractApiError(err, 'فشل الموافقة على الإجازة'));
@@ -326,14 +326,25 @@ export function useHRLeave() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: ({ requestId, approvalComment }: { requestId: string; approvalComment?: string }) =>
-      HRLeaveService.reject(requestId, { approvalComment }),
+    mutationFn: ({ requestId, reason }: { requestId: string; reason: string }) =>
+      HRLeaveService.reject(requestId, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.leave });
       message.success('تم رفض الإجازة');
     },
     onError: (err) => {
       message.error(extractApiError(err, 'فشل رفض الإجازة'));
+    },
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: (requestId: string) => HRLeaveService.withdraw(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.leave });
+      message.success('تم سحب طلب الإجازة');
+    },
+    onError: (err) => {
+      message.error(extractApiError(err, 'فشل سحب طلب الإجازة'));
     },
   });
 
@@ -344,9 +355,11 @@ export function useHRLeave() {
     createLeave: createMutation.mutateAsync,
     approveLeave: approveMutation.mutateAsync,
     rejectLeave: rejectMutation.mutateAsync,
+    withdrawLeave: withdrawMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isApproving: approveMutation.isPending,
     isRejecting: rejectMutation.isPending,
+    isWithdrawing: withdrawMutation.isPending,
   };
 }
 

@@ -47,6 +47,7 @@ export type PermissionMatrix = Record<string, string[]>;
 export const PAGE_REGISTRY: PageDef[] = [
   // ── Core ──
   { key: '/dashboard', labelAr: 'الرئيسية', labelEn: 'Dashboard', group: 'core', groupAr: 'عام', groupEn: 'General' },
+  { key: '/notifications', labelAr: 'الإشعارات', labelEn: 'Notifications', group: 'core', groupAr: 'عام', groupEn: 'General' },
   { key: '/branch/management', labelAr: 'الفروع', labelEn: 'Branches', group: 'core', groupAr: 'عام', groupEn: 'General' },
   { key: '/customers', labelAr: 'العملاء', labelEn: 'Customers', group: 'core', groupAr: 'عام', groupEn: 'General' },
   { key: '/complaints', labelAr: 'الشكاوى', labelEn: 'Complaints', group: 'core', groupAr: 'عام', groupEn: 'General' },

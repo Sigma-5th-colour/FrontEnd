@@ -34,6 +34,7 @@ export const ADMIN_MANAGE_PERMISSIONS = [
 ] as const;
 
 export const PAGE_PERMISSION_REQUIREMENTS: Record<string, readonly string[]> = {
+  '/notifications': [],
   '/customers': [APP_PERMISSIONS.CUSTOMERS_VIEW],
   '/complaints': [APP_PERMISSIONS.CUSTOMERS_VIEW],
   '/sponsorship-transfer': [APP_PERMISSIONS.CONTRACTS_VIEW],

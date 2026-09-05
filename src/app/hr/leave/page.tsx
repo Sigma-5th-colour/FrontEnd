@@ -11,12 +11,12 @@ import {
   Input,
   DatePicker,
   Select,
-  Tag,
   Typography,
   Tooltip,
   Row,
   Col,
   Statistic,
+  Popconfirm,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,43 +24,33 @@ import {
   CloseOutlined,
   CalendarOutlined,
   SearchOutlined,
+  ReloadOutlined,
+  RollbackOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { AdvancedFilterPanel } from '@/components/filters';
 import { useHRLeave, useHRLeaveTypes, useHREmployees } from '@/hooks/api/useHR';
 import { useHrActionGates } from '@/hooks/useActionPermissionGates';
-import { LeaveStatus } from '@/types/hr.types';
-import type { LeaveRequestDto, CreateLeaveRequestDto } from '@/types/hr.types';
+import { RequestStatus, type LeaveRequestDto, type CreateLeaveRequestDto } from '@/types/hr.types';
+import {
+  ApprovalStageTag,
+  ApprovalSteps,
+  RequestStatusTag,
+  canActOnApprovalStage,
+} from '@/app/hr/_components/requestWorkflow';
 import styles from './Leave.module.css';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
-// Backend returns leave status as a NUMERIC enum (0=Pending, 1=Approved,
-// 2=Rejected, 3=Cancelled).
-const STATUS_COLOR: Record<number, string> = {
-  [LeaveStatus.Pending]: 'warning',
-  [LeaveStatus.Approved]: 'success',
-  [LeaveStatus.Rejected]: 'error',
-  [LeaveStatus.Cancelled]: 'default',
-};
-
-const STATUS_LABEL: Record<number, string> = {
-  [LeaveStatus.Pending]: 'قيد الانتظار',
-  [LeaveStatus.Approved]: 'موافق عليه',
-  [LeaveStatus.Rejected]: 'مرفوض',
-  [LeaveStatus.Cancelled]: 'ملغى',
-};
-
-type ActionType = 'approve' | 'reject';
-
 export default function HRLeavePage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [actionModal, setActionModal] = useState<{ type: ActionType; record: LeaveRequestDto } | null>(null);
+  const [rejectRecord, setRejectRecord] = useState<LeaveRequestDto | null>(null);
+  const [actioningId, setActioningId] = useState<string | null>(null);
   const [form] = Form.useForm();
-  const [commentForm] = Form.useForm();
+  const [rejectForm] = Form.useForm();
   const hrGates = useHrActionGates();
 
   const {
@@ -69,16 +59,20 @@ export default function HRLeavePage() {
     createLeave,
     approveLeave,
     rejectLeave,
+    withdrawLeave,
+    refetch,
     isCreating,
     isApproving,
     isRejecting,
+    isWithdrawing,
   } = useHRLeave();
 
   const { leaveTypes } = useHRLeaveTypes();
-  const { employees } = useHREmployees({ pageSize: 200 });
+  const { employees, isLoading: isLoadingEmployees } = useHREmployees(
+    { pageSize: 200 },
+    hrGates.canManage
+  );
 
-  // The list endpoint returns employeeName / leaveTypeName as null, so resolve
-  // both client-side from the lookup collections.
   const leaveTypeNameById = useMemo(
     () => Object.fromEntries(leaveTypes.map((lt) => [lt.id, lt.name])),
     [leaveTypes]
@@ -96,9 +90,10 @@ export default function HRLeavePage() {
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const [searchText, setSearchText] = useState('');
 
-  const pendingCount = leaveRequests.filter((r) => r.status === LeaveStatus.Pending).length;
-  const approvedCount = leaveRequests.filter((r) => r.status === LeaveStatus.Approved).length;
-  const rejectedCount = leaveRequests.filter((r) => r.status === LeaveStatus.Rejected).length;
+  const pendingCount = leaveRequests.filter((r) => r.status === RequestStatus.Pending).length;
+  const approvedCount = leaveRequests.filter((r) => r.status === RequestStatus.Approved).length;
+  const rejectedCount = leaveRequests.filter((r) => r.status === RequestStatus.Rejected).length;
+  const withdrawnCount = leaveRequests.filter((r) => r.status === RequestStatus.Withdrawn).length;
 
   const filteredRequests = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -119,6 +114,7 @@ export default function HRLeavePage() {
     try {
       const values = await form.validateFields();
       const dto: CreateLeaveRequestDto = {
+        ...(hrGates.canManage && values.employeeId ? { employeeId: values.employeeId } : {}),
         leaveTypeId: values.leaveTypeId,
         fromDate: values.dateRange[0].format('YYYY-MM-DD'),
         toDate: values.dateRange[1].format('YYYY-MM-DD'),
@@ -132,26 +128,26 @@ export default function HRLeavePage() {
     }
   };
 
-  const handleActionConfirm = async () => {
-    if (!actionModal) return;
-    if (actionModal.type === 'approve' ? !hrGates.canApprove : !hrGates.canReject) return;
-    try {
-      const { approvalComment } = commentForm.getFieldsValue();
-      if (actionModal.type === 'approve') {
-        await approveLeave({ requestId: actionModal.record.id, approvalComment });
-      } else {
-        await rejectLeave({ requestId: actionModal.record.id, approvalComment });
-      }
-      setActionModal(null);
-      commentForm.resetFields();
-    } catch {
-      // Mutation toast already explains the failure; keep the decision modal open.
-    }
+  const runAction = (id: string, fn: () => Promise<unknown>) => {
+    setActioningId(id);
+    return fn()
+      .catch(() => {})
+      .finally(() => setActioningId(null));
   };
 
-  const handleActionCancel = () => {
-    setActionModal(null);
-    commentForm.resetFields();
+  const handleReject = async () => {
+    if (!rejectRecord) return;
+    try {
+      const values = await rejectForm.validateFields();
+      setActioningId(rejectRecord.id);
+      await rejectLeave({ requestId: rejectRecord.id, reason: values.reason });
+      setRejectRecord(null);
+      rejectForm.resetFields();
+    } catch {
+      // Validation and mutation errors are displayed by antd / hooks.
+    } finally {
+      setActioningId(null);
+    }
   };
 
   const columns: ColumnsType<LeaveRequestDto> = [
@@ -168,11 +164,13 @@ export default function HRLeavePage() {
     {
       title: 'من تاريخ',
       dataIndex: 'fromDate',
+      width: 120,
       render: (v) => (v ? dayjs(v).format('YYYY/MM/DD') : '—'),
     },
     {
       title: 'إلى تاريخ',
       dataIndex: 'toDate',
+      width: 120,
       render: (v) => (v ? dayjs(v).format('YYYY/MM/DD') : '—'),
     },
     {
@@ -191,54 +189,80 @@ export default function HRLeavePage() {
       title: 'الحالة',
       dataIndex: 'status',
       width: 130,
-      render: (v: number | null | undefined) =>
-        v == null ? (
-          <Tag color="default">—</Tag>
-        ) : (
-          <Tag color={STATUS_COLOR[v] ?? 'default'}>{STATUS_LABEL[v] ?? `حالة ${v}`}</Tag>
-        ),
+      render: (v: number | null | undefined) => <RequestStatusTag status={v} />,
     },
     {
-      title: 'تاريخ الموافقة',
-      dataIndex: 'approvedAt',
-      render: (v) => (v ? dayjs(v).format('YYYY/MM/DD') : '—'),
+      title: 'مرحلة الاعتماد',
+      dataIndex: 'approval',
+      width: 170,
+      render: (_, record) => <ApprovalStageTag approval={record.approval} />,
     },
     {
-      title: 'تعليق القرار',
-      dataIndex: 'approvalComment',
-      ellipsis: true,
-      render: (v) => v || '—',
+      title: 'مسار الاعتماد',
+      dataIndex: 'approval',
+      width: 360,
+      render: (_, record) => <ApprovalSteps approval={record.approval} />,
     },
     {
       title: 'الإجراءات',
       key: 'actions',
-      width: 140,
+      width: 180,
+      fixed: 'right',
       render: (_, record) => {
-        const isPending = record.status === LeaveStatus.Pending;
-        // Only pending requests are actionable. There is no cancel action: the
-        // backend exposes no cancel endpoint (404 on every variant), so a
-        // pending request is resolved via reject rather than cancel.
-        if (!isPending || !hrGates.canManage) {
+        const isPending = record.status === RequestStatus.Pending;
+        const canApproveThisStage = canActOnApprovalStage(record, hrGates);
+        const canWithdraw = isPending && (hrGates.canSubmitRequest || hrGates.canManage);
+
+        if (!canApproveThisStage && !canWithdraw) {
           return <span style={{ color: '#bbb' }}>—</span>;
         }
+
         return (
           <Space>
-            <Tooltip title="موافقة">
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                style={{ color: '#52c41a' }}
-                onClick={() => setActionModal({ type: 'approve', record })}
-              />
-            </Tooltip>
-            <Tooltip title="رفض">
-              <Button
-                type="text"
-                danger
-                icon={<CloseOutlined />}
-                onClick={() => setActionModal({ type: 'reject', record })}
-              />
-            </Tooltip>
+            {canWithdraw && (
+              <Tooltip title="سحب الطلب">
+                <Popconfirm
+                  title="تأكيد سحب طلب الإجازة؟"
+                  onConfirm={() => runAction(record.id, () => withdrawLeave(record.id))}
+                  okText="سحب"
+                  cancelText="إلغاء"
+                >
+                  <Button
+                    type="text"
+                    icon={<RollbackOutlined />}
+                    loading={isWithdrawing && actioningId === record.id}
+                  />
+                </Popconfirm>
+              </Tooltip>
+            )}
+            {canApproveThisStage && (
+              <>
+                <Tooltip title="موافقة على المرحلة الحالية">
+                  <Popconfirm
+                    title="تأكيد الموافقة على المرحلة الحالية؟"
+                    onConfirm={() => runAction(record.id, () => approveLeave({ requestId: record.id }))}
+                    okText="موافقة"
+                    cancelText="إلغاء"
+                  >
+                    <Button
+                      type="text"
+                      icon={<CheckOutlined />}
+                      style={{ color: '#52c41a' }}
+                      loading={isApproving && actioningId === record.id}
+                    />
+                  </Popconfirm>
+                </Tooltip>
+                <Tooltip title="رفض">
+                  <Button
+                    type="text"
+                    danger
+                    icon={<CloseOutlined />}
+                    onClick={() => setRejectRecord(record)}
+                    loading={isRejecting && actioningId === record.id}
+                  />
+                </Tooltip>
+              </>
+            )}
           </Space>
         );
       },
@@ -252,32 +276,40 @@ export default function HRLeavePage() {
           <CalendarOutlined style={{ fontSize: 22, color: '#1677ff' }} />
           <Title level={4} style={{ margin: 0 }}>طلبات الإجازات</Title>
         </Space>
-        {hrGates.canSubmitRequest && (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setCreateModalOpen(true)}
-            size="large"
-          >
-            طلب إجازة جديدة
-          </Button>
-        )}
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => refetch()}>تحديث</Button>
+          {hrGates.canSubmitRequest && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateModalOpen(true)}
+              size="large"
+            >
+              طلب إجازة جديدة
+            </Button>
+          )}
+        </Space>
       </div>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={8}>
+        <Col xs={12} md={6}>
           <Card size="small">
             <Statistic title="قيد الانتظار" value={pendingCount} styles={{ content: { color: '#faad14' } }} />
           </Card>
         </Col>
-        <Col xs={8}>
+        <Col xs={12} md={6}>
           <Card size="small">
             <Statistic title="معتمدة" value={approvedCount} styles={{ content: { color: '#52c41a' } }} />
           </Card>
         </Col>
-        <Col xs={8}>
+        <Col xs={12} md={6}>
           <Card size="small">
             <Statistic title="مرفوضة" value={rejectedCount} styles={{ content: { color: '#ff4d4f' } }} />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card size="small">
+            <Statistic title="مسحوبة" value={withdrawnCount} styles={{ content: { color: '#8c8c8c' } }} />
           </Card>
         </Col>
       </Row>
@@ -307,10 +339,10 @@ export default function HRLeavePage() {
                 value={statusFilter}
                 onChange={(v) => setStatusFilter(v)}
                 options={[
-                  { value: LeaveStatus.Pending, label: 'قيد الانتظار' },
-                  { value: LeaveStatus.Approved, label: 'موافق عليه' },
-                  { value: LeaveStatus.Rejected, label: 'مرفوض' },
-                  { value: LeaveStatus.Cancelled, label: 'ملغى' },
+                  { value: RequestStatus.Pending, label: 'قيد الانتظار' },
+                  { value: RequestStatus.Approved, label: 'موافق عليه' },
+                  { value: RequestStatus.Rejected, label: 'مرفوض' },
+                  { value: RequestStatus.Withdrawn, label: 'مسحوب' },
                 ]}
               />
             </div>
@@ -335,11 +367,10 @@ export default function HRLeavePage() {
                 ? 'لا توجد نتائج مطابقة'
                 : 'لا توجد طلبات إجازة',
           }}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1350 }}
         />
       </Card>
 
-      {/* Create Leave Modal */}
       <Modal
         open={createModalOpen && hrGates.canSubmitRequest}
         title="طلب إجازة جديدة"
@@ -351,10 +382,29 @@ export default function HRLeavePage() {
         confirmLoading={isCreating}
         okText="تقديم الطلب"
         cancelText="إلغاء"
-        width={500}
+        width={520}
         destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
+          {hrGates.canManage && (
+            <Form.Item
+              name="employeeId"
+              label="الموظف"
+              rules={[{ required: true, message: 'يرجى اختيار الموظف' }]}
+            >
+              <Select
+                showSearch
+                placeholder="اختر الموظف لإنشاء الطلب باسمه"
+                loading={isLoadingEmployees}
+                optionFilterProp="label"
+                options={employees.map((e) => ({
+                  value: e.id,
+                  label: e.nameAr || e.nameEn || e.id,
+                }))}
+              />
+            </Form.Item>
+          )}
+
           <Form.Item
             name="leaveTypeId"
             label="نوع الإجازة"
@@ -375,11 +425,7 @@ export default function HRLeavePage() {
             label="فترة الإجازة"
             rules={[{ required: true, message: 'يرجى تحديد فترة الإجازة' }]}
           >
-            <RangePicker
-              style={{ width: '100%' }}
-              format="YYYY-MM-DD"
-              disabledDate={(d) => d.isBefore(dayjs(), 'day')}
-            />
+            <RangePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
           </Form.Item>
 
           <Form.Item
@@ -392,41 +438,37 @@ export default function HRLeavePage() {
         </Form>
       </Modal>
 
-      {/* Approve / Reject Modal */}
       <Modal
-        open={!!actionModal && hrGates.canManage}
-        title={actionModal?.type === 'approve' ? 'الموافقة على الإجازة' : 'رفض الإجازة'}
-        onCancel={handleActionCancel}
-        onOk={handleActionConfirm}
-        confirmLoading={actionModal?.type === 'approve' ? isApproving : isRejecting}
-        okText={actionModal?.type === 'approve' ? 'موافقة' : 'رفض'}
-        okButtonProps={actionModal?.type === 'reject' ? { danger: true } : undefined}
+        open={!!rejectRecord}
+        title="رفض طلب الإجازة"
+        onCancel={() => {
+          setRejectRecord(null);
+          rejectForm.resetFields();
+        }}
+        onOk={handleReject}
+        confirmLoading={isRejecting && actioningId === rejectRecord?.id}
+        okText="رفض"
+        okButtonProps={{ danger: true }}
         cancelText="إلغاء"
         width={480}
         destroyOnHidden
       >
-        {actionModal && (
+        {rejectRecord && (
           <div style={{ marginBottom: 12, color: '#555' }}>
-            <strong>الموظف:</strong> {resolveEmployeeName(actionModal.record)}&nbsp;&nbsp;
+            <strong>الموظف:</strong> {resolveEmployeeName(rejectRecord)}&nbsp;&nbsp;
             <strong>الفترة:</strong>{' '}
-            {actionModal.record.fromDate ? dayjs(actionModal.record.fromDate).format('YYYY/MM/DD') : '—'}
+            {rejectRecord.fromDate ? dayjs(rejectRecord.fromDate).format('YYYY/MM/DD') : '—'}
             {' — '}
-            {actionModal.record.toDate ? dayjs(actionModal.record.toDate).format('YYYY/MM/DD') : '—'}
-            &nbsp;({actionModal.record.daysCount ?? '—'} يوم)
+            {rejectRecord.toDate ? dayjs(rejectRecord.toDate).format('YYYY/MM/DD') : '—'}
           </div>
         )}
-        <Form form={commentForm} layout="vertical">
-          <Form.Item name="approvalComment" label="تعليق القرار (اختياري)">
-            <TextArea
-              rows={3}
-              maxLength={500}
-              showCount
-              placeholder={
-                actionModal?.type === 'approve'
-                  ? 'أضف ملاحظة للموافقة...'
-                  : 'اكتب سبب الرفض...'
-              }
-            />
+        <Form form={rejectForm} layout="vertical">
+          <Form.Item
+            name="reason"
+            label="سبب الرفض"
+            rules={[{ required: true, message: 'اكتب سبب الرفض' }]}
+          >
+            <TextArea rows={3} maxLength={500} showCount placeholder="اكتب سبب الرفض..." />
           </Form.Item>
         </Form>
       </Modal>
