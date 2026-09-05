@@ -81,6 +81,21 @@
   margin-bottom: 12px;
 }
 
+.approvalSteps :global(.ant-steps-item) {
+  padding-bottom: 8px;
+}
+
+.approvalSteps :global(.ant-steps-item-title) {
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.approvalSteps :global(.ant-steps-item-icon) {
+  margin-inline-end: 10px;
+}
+
 .cardActions {
   border-top: 1px solid #eef2f7;
   margin-top: 16px;

@@ -1,6 +1,7 @@
 'use client';
 
 import { Descriptions, Space, Steps, Tag } from 'antd';
+import type { StepsProps } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -77,7 +78,15 @@ export function ApprovalStageTag({ approval }: { approval?: HRApprovalDto | null
   return <Tag color="geekblue">{APPROVAL_STAGE_LABEL[stage] ?? `مرحلة ${stage}`}</Tag>;
 }
 
-export function ApprovalSteps({ approval }: { approval?: HRApprovalDto | null }) {
+export function ApprovalSteps({
+  approval,
+  className,
+  direction,
+}: {
+  approval?: HRApprovalDto | null;
+  className?: string;
+  direction?: StepsProps['direction'];
+}) {
   const stage = approval?.approvalStage;
   const rejected = stage === HRApprovalStage.Rejected;
   const withdrawn = stage === HRApprovalStage.Withdrawn;
@@ -87,6 +96,8 @@ export function ApprovalSteps({ approval }: { approval?: HRApprovalDto | null })
   return (
     <Steps
       size="small"
+      className={className}
+      direction={direction}
       current={current}
       status={rejected ? 'error' : withdrawn ? 'wait' : approved ? 'finish' : 'process'}
       items={[

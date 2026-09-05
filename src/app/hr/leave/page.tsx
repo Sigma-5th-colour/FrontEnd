@@ -364,7 +364,7 @@ export default function HRLeavePage() {
                 }
               >
                 <Row gutter={[16, 16]}>
-                  <Col xs={24} md={14} lg={16}>
+                  <Col xs={24} lg={16}>
                     <Row gutter={[12, 12]}>
                       <Col xs={12} sm={8}>
                         <div className={styles.detailItem}>
@@ -393,10 +393,14 @@ export default function HRLeavePage() {
                     </Row>
                   </Col>
 
-                  <Col xs={24} md={10} lg={8}>
+                  <Col xs={24} lg={8}>
                     <div className={styles.approvalPanel}>
                       <div className={styles.approvalTitle}>مسار الاعتماد</div>
-                      <ApprovalSteps approval={record.approval} />
+                      <ApprovalSteps
+                        approval={record.approval}
+                        direction="vertical"
+                        className={styles.approvalSteps}
+                      />
                     </div>
                   </Col>
                 </Row>
