@@ -27,12 +27,19 @@ export function useNotificationRealtime() {
   useEffect(() => {
     if (!branchId || typeof window === 'undefined') return;
 
+    const token =
+      localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '';
+    if (!token) return;
+
     const hubBaseUrl = API_CONFIG.BASE_URL.replace(/\/$/, '');
+    // JWT via accessTokenFactory (query string). Prefer no cookie credentials —
+    // auth is bearer-based. Backend CORS also allows credentialed origins for hubs.
     const connection = new HubConnectionBuilder()
       .withUrl(`${hubBaseUrl}/hubs/notifications`, {
         accessTokenFactory: () =>
           localStorage.getItem('authToken') || sessionStorage.getItem('authToken') || '',
         headers: { 'X-Branch-Id': branchId },
+        withCredentials: false,
       })
       .withAutomaticReconnect([0, 2000, 10000, 30000])
       .configureLogging(
@@ -56,9 +63,7 @@ export function useNotificationRealtime() {
 
     void connection.start().catch((error) => {
       // REST polling remains active when the hub is temporarily unavailable.
-      if (process.env.NEXT_PUBLIC_ENV === 'development') {
-        console.warn('Notification realtime connection failed:', error);
-      }
+      console.warn('Notification realtime connection failed:', error);
     });
 
     return () => {
@@ -82,7 +87,9 @@ export function useUnreadNotifications(take = 10, enabled = true) {
   return useQuery({
     queryKey: QK.unread(take),
     queryFn: () => NotificationService.getUnread(take),
-    refetchInterval: 60000,
+    // Fallback when SignalR is down — keep the badge reasonably fresh without a full page refresh.
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
     enabled,
   });
 }
@@ -91,7 +98,8 @@ export function useUnreadNotificationCount(enabled = true) {
   return useQuery({
     queryKey: QK.unreadCount,
     queryFn: () => NotificationService.getUnreadCount(),
-    refetchInterval: 60000,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
     enabled,
   });
 }
