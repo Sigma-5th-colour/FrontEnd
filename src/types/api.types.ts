@@ -487,7 +487,7 @@ export interface Agent {
   agentNameAr?: string | null;
   agentNameEn?: string | null;
   username?: string | null;
-  nationalityId?: number | null;
+  nationalityId?: string | null;
   nationalityNameAr?: string | null;
   nationalityNameEn?: string | null;
   agentLicense?: string | null;
@@ -514,7 +514,7 @@ export interface CreateAgentDto {
   agentNameAr?: string | null;
   agentNameEn?: string | null;
   username?: string | null;
-  nationalityId?: number | null;
+  nationalityId?: string | null;
   agentLicense?: string | null;
   contractType?: number | null;
   phone?: string | null;
@@ -537,7 +537,7 @@ export interface UpdateAgentDto {
   agentNameAr?: string | null;
   agentNameEn?: string | null;
   username?: string | null;
-  nationalityId?: number | null;
+  nationalityId?: string | null;
   agentLicense?: string | null;
   contractType?: number | null;
   phone?: string | null;

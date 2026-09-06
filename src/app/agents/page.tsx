@@ -405,15 +405,11 @@ export default function AgentsPage() {
     const normalizedNationalityId =
       nationalityRaw === undefined || nationalityRaw === null || nationalityRaw === ''
         ? undefined
-        : typeof nationalityRaw === 'number'
-          ? nationalityRaw
-          : /^\d+$/.test(String(nationalityRaw).trim())
-            ? Number(nationalityRaw)
-            : String(nationalityRaw).trim();
+        : String(nationalityRaw).trim();
 
     const agentData: CreateAgentDto = {
       ...values,
-      nationalityId: normalizedNationalityId as any,
+      nationalityId: normalizedNationalityId,
       contractType: values.contractType !== undefined ? Number(values.contractType) : 0,
       sendAllEmails: Boolean(values.sendAllEmails),
       isActive: Boolean(values.isActive),
