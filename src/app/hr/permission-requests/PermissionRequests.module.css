@@ -5,3 +5,127 @@
   color: #334155;
   font-size: 14px;
 }
+
+.requestCard {
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.requestCard :global(.ant-card-head) {
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+}
+
+.requestCard :global(.ant-card-head-title),
+.requestCard :global(.ant-card-extra) {
+  white-space: normal;
+}
+
+.requestNumber {
+  color: #1677ff;
+  font-weight: 700;
+}
+
+.requestSubtitle {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.detailItem {
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 70px;
+}
+
+.detailItem span,
+.reasonBlock span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.detailItem strong {
+  color: #0f172a;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.reasonBlock {
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 84px;
+}
+
+.reasonBlock p {
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.approvalPanel {
+  background: #fbfdff;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  padding: 12px;
+  height: 100%;
+}
+
+.approvalTitle {
+  color: #334155;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.approvalSteps :global(.ant-steps-item) {
+  padding-bottom: 8px;
+}
+
+.approvalSteps :global(.ant-steps-item-title) {
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.approvalSteps :global(.ant-steps-item-icon) {
+  margin-inline-end: 10px;
+}
+
+.cardActions {
+  border-top: 1px solid #eef2f7;
+  margin-top: 16px;
+  padding-top: 12px;
+}
+
+.paginationBar {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+}
+
+.paginationBar span {
+  color: #475569;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .requestCard :global(.ant-card-head) {
+    padding: 14px 16px;
+  }
+
+  .paginationBar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+}

@@ -141,3 +141,49 @@ export function PrintPreview({ data }: { data: HRRequestPrintDto }) {
     </div>
   );
 }
+
+export function printHrRequestPreview() {
+  const printArea = document.querySelector('.hr-request-print-area');
+  if (!printArea) {
+    window.print();
+    return;
+  }
+
+  const printWindow = window.open('', '_blank', 'width=900,height=700');
+  if (!printWindow) {
+    window.print();
+    return;
+  }
+
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map((node) => node.outerHTML)
+    .join('\n');
+
+  printWindow.document.open();
+  printWindow.document.write(`<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <title>طباعة الطلب</title>
+    ${styles}
+    <style>
+      @page { size: A4 portrait; margin: 12mm; }
+      html, body { background: #fff !important; direction: rtl; }
+      body { margin: 0; padding: 0; color: #000; }
+      .print-shell { width: 100%; max-width: 190mm; margin: 0 auto; }
+      .hr-request-print-area { position: static !important; inset: auto !important; width: 100% !important; min-height: auto !important; overflow: visible !important; }
+      .ant-modal, .ant-modal-root, .ant-modal-wrap, .ant-modal-content, .ant-modal-body { position: static !important; transform: none !important; box-shadow: none !important; padding: 0 !important; }
+      .ant-descriptions, .ant-steps { break-inside: avoid; page-break-inside: avoid; }
+    </style>
+  </head>
+  <body>
+    <div class="print-shell">${printArea.outerHTML}</div>
+  </body>
+</html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 300);
+}

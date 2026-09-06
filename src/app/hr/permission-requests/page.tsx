@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Card,
-  Table,
   Button,
   Tag,
   Space,
-  Tooltip,
   Popconfirm,
   Typography,
   Row,
@@ -17,8 +15,10 @@ import {
   Select,
   Modal,
   Form,
+  Empty,
+  Pagination,
+  Spin,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
 import {
   CheckOutlined,
   CloseOutlined,
@@ -39,6 +39,7 @@ import {
   PrintPreview,
   RequestStatusTag,
   canActOnApprovalStage,
+  printHrRequestPreview,
 } from '../_components/requestWorkflow';
 import styles from './PermissionRequests.module.css';
 
@@ -77,6 +78,8 @@ export default function PermissionRequestsPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [rejectRecord, setRejectRecord] = useState<PermissionRequestDto | null>(null);
   const [printData, setPrintData] = useState<HRRequestPrintDto | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const runAction = (id: string, fn: (id: string) => Promise<unknown>) => {
     setActioningId(id);
@@ -129,127 +132,85 @@ export default function PermissionRequestsPage() {
     });
   }, [permissionRequests, statusFilter, searchText]);
 
-  const columns: ColumnsType<PermissionRequestDto> = [
-    {
-      title: 'الموظف',
-      dataIndex: 'employeeName',
-      render: (v) => v || '—',
-    },
-    {
-      title: 'تاريخ الاستئذان',
-      dataIndex: 'permissionDate',
-      width: 140,
-      render: (v) => (v ? dayjs(v).format('YYYY/MM/DD') : '—'),
-    },
-    {
-      title: 'نوع الاستئذان',
-      dataIndex: 'permissionType',
-      width: 130,
-      render: (v: number) => (
-        <Tag color="blue">{TYPE_LABEL[v] ?? `نوع ${v}`}</Tag>
-      ),
-    },
-    {
-      title: 'الطبيعة',
-      dataIndex: 'permissionNature',
-      width: 90,
-      render: (v: number) => NATURE_LABEL[v] ?? '—',
-    },
-    {
-      title: 'الوقت',
-      key: 'time',
-      width: 110,
-      render: (_, r) => {
-        if (r.permissionType === 1) return r.comeLateTime || '—';
-        if (r.permissionType === 2) return `${r.partTimeStart || '—'} — ${r.partTimeFinish || '—'}`;
-        if (r.permissionType === 3) return r.outEarlyTime || '—';
-        return '—';
-      },
-    },
-    {
-      title: 'الأسباب',
-      dataIndex: 'reasons',
-      ellipsis: true,
-      render: (v) => v || '—',
-    },
-    {
-      title: 'الحالة',
-      dataIndex: 'status',
-      width: 130,
-      render: (v: number) => <RequestStatusTag status={v} />,
-    },
-    {
-      title: 'مرحلة الاعتماد',
-      dataIndex: 'approval',
-      width: 170,
-      render: (_, record) => <ApprovalStageTag approval={record.approval} />,
-    },
-    {
-      title: 'الإجراءات',
-      key: 'actions',
-      width: 170,
-      render: (_, record) => {
-        const canApprove = canActOnApprovalStage(record, hrGates);
-        const isPending = record.status === RequestStatus.Pending;
-        return (
-          <Space>
-            <Tooltip title="طباعة">
+  const paginatedRequests = useMemo(
+    () => filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filteredRequests, currentPage, pageSize]
+  );
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [currentPage, filteredRequests.length, pageSize]);
+
+  const resolvePermissionTime = (record: PermissionRequestDto) => {
+    if (record.permissionType === 1) return record.comeLateTime || '—';
+    if (record.permissionType === 2) return `${record.partTimeStart || '—'} — ${record.partTimeFinish || '—'}`;
+    if (record.permissionType === 3) return record.outEarlyTime || '—';
+    return '—';
+  };
+
+  const resolvePermissionTypeLabel = (value?: number | null) =>
+    value == null ? '—' : TYPE_LABEL[value] ?? `نوع ${value}`;
+
+  const resolvePermissionNatureLabel = (value?: number | null) =>
+    value == null ? '—' : NATURE_LABEL[value] ?? '—';
+
+  const renderActions = (record: PermissionRequestDto) => {
+    const canApprove = canActOnApprovalStage(record, hrGates);
+    const isPending = record.status === RequestStatus.Pending;
+
+    return (
+      <Space wrap>
+        <Button
+          icon={<PrinterOutlined />}
+          loading={isPrinting && actioningId === record.id}
+          onClick={() => handlePrint(record.id)}
+        >
+          طباعة
+        </Button>
+        {isPending && (
+          <Popconfirm
+            title="سحب طلب الاستئذان؟"
+            onConfirm={() => runAction(record.id, withdrawPermissionRequest)}
+            okText="سحب"
+            cancelText="إلغاء"
+          >
+            <Button icon={<RollbackOutlined />} loading={isWithdrawing && actioningId === record.id}>
+              سحب الطلب
+            </Button>
+          </Popconfirm>
+        )}
+        {canApprove && (
+          <>
+            <Popconfirm
+              title="تأكيد الموافقة على طلب الاستئذان؟"
+              onConfirm={() => runAction(record.id, approvePermissionRequest)}
+              okText="موافقة"
+              cancelText="إلغاء"
+            >
               <Button
-                type="text"
-                icon={<PrinterOutlined />}
-                loading={isPrinting && actioningId === record.id}
-                onClick={() => handlePrint(record.id)}
-              />
-            </Tooltip>
-            {isPending && (
-              <Tooltip title="سحب الطلب">
-                <Popconfirm
-                  title="سحب طلب الاستئذان؟"
-                  onConfirm={() => runAction(record.id, withdrawPermissionRequest)}
-                  okText="سحب"
-                  cancelText="إلغاء"
-                >
-                  <Button
-                    type="text"
-                    icon={<RollbackOutlined />}
-                    loading={isWithdrawing && actioningId === record.id}
-                  />
-                </Popconfirm>
-              </Tooltip>
-            )}
-            {canApprove && (
-              <>
-            <Tooltip title="موافقة">
-              <Popconfirm
-                title="تأكيد الموافقة على طلب الاستئذان؟"
-                onConfirm={() => runAction(record.id, approvePermissionRequest)}
-                okText="موافقة"
-                cancelText="إلغاء"
+                icon={<CheckOutlined />}
+                style={{ color: '#52c41a' }}
+                loading={isApproving && actioningId === record.id}
               >
-                <Button
-                  type="text"
-                  icon={<CheckOutlined />}
-                  style={{ color: '#52c41a' }}
-                  loading={isApproving && actioningId === record.id}
-                />
-              </Popconfirm>
-            </Tooltip>
-            <Tooltip title="رفض">
-                <Button
-                  type="text"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => setRejectRecord(record)}
-                  loading={isRejecting && actioningId === record.id}
-                />
-            </Tooltip>
-              </>
-            )}
-          </Space>
-        );
-      },
-    },
-  ];
+                موافقة
+              </Button>
+            </Popconfirm>
+            <Button
+              danger
+              icon={<CloseOutlined />}
+              onClick={() => setRejectRecord(record)}
+              loading={isRejecting && actioningId === record.id}
+            >
+              رفض
+            </Button>
+          </>
+        )}
+      </Space>
+    );
+  };
 
   return (
     <div style={{ padding: 24 }}>
@@ -289,6 +250,7 @@ export default function PermissionRequestsPage() {
         onClear={() => {
           setStatusFilter(undefined);
           setSearchText('');
+          setCurrentPage(1);
         }}
         quickFilters={
           <>
@@ -298,7 +260,10 @@ export default function PermissionRequestsPage() {
               prefix={<SearchOutlined />}
               style={{ width: 280 }}
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setCurrentPage(1);
+              }}
             />
             <div>
               <label className={styles.filterLabel}>تصفية بالحالة</label>
@@ -307,7 +272,10 @@ export default function PermissionRequestsPage() {
                 allowClear
                 style={{ width: 180 }}
                 value={statusFilter}
-                onChange={(v) => setStatusFilter(v)}
+                onChange={(v) => {
+                  setStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 options={[
                   { value: RequestStatus.Pending, label: 'قيد الانتظار' },
                   { value: RequestStatus.Approved, label: 'موافق عليه' },
@@ -320,26 +288,107 @@ export default function PermissionRequestsPage() {
         }
       />
 
-      <Card>
-        <Table<PermissionRequestDto>
-          dataSource={filteredRequests}
-          columns={columns}
-          rowKey="id"
-          loading={isLoading}
-          pagination={{
-            pageSize: 15,
-            showSizeChanger: false,
-            showTotal: (total) => `إجمالي: ${total} طلب`,
-          }}
-          locale={{
-            emptyText:
-              statusFilter != null || searchText
-                ? 'لا توجد نتائج مطابقة'
-                : 'لا توجد طلبات استئذان',
-          }}
-          scroll={{ x: 900 }}
-        />
-      </Card>
+      <Spin spinning={isLoading}>
+        {filteredRequests.length === 0 ? (
+          <Card>
+            <Empty
+              description={
+                statusFilter != null || searchText
+                  ? 'لا توجد نتائج مطابقة'
+                  : 'لا توجد طلبات استئذان'
+              }
+            />
+          </Card>
+        ) : (
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            {paginatedRequests.map((record, index) => (
+              <Card
+                key={record.id}
+                className={styles.requestCard}
+                title={
+                  <Space direction="vertical" size={4}>
+                    <Space wrap>
+                      <span className={styles.requestNumber}>
+                        #{(currentPage - 1) * pageSize + index + 1}
+                      </span>
+                      <strong>{record.employeeName || '—'}</strong>
+                    </Space>
+                    <Space wrap>
+                      <Tag color="blue">{resolvePermissionTypeLabel(record.permissionType)}</Tag>
+                      <span className={styles.requestSubtitle}>
+                        {resolvePermissionNatureLabel(record.permissionNature)}
+                      </span>
+                    </Space>
+                  </Space>
+                }
+                extra={
+                  <Space wrap>
+                    <RequestStatusTag status={record.status} />
+                    <ApprovalStageTag approval={record.approval} />
+                  </Space>
+                }
+              >
+                <Row gutter={[16, 16]}>
+                  <Col xs={24} lg={16}>
+                    <Row gutter={[12, 12]}>
+                      <Col xs={12} sm={8}>
+                        <div className={styles.detailItem}>
+                          <span>تاريخ الاستئذان</span>
+                          <strong>
+                            {record.permissionDate ? dayjs(record.permissionDate).format('YYYY/MM/DD') : '—'}
+                          </strong>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={8}>
+                        <div className={styles.detailItem}>
+                          <span>الوقت</span>
+                          <strong>{resolvePermissionTime(record)}</strong>
+                        </div>
+                      </Col>
+                      <Col xs={12} sm={8}>
+                        <div className={styles.detailItem}>
+                          <span>الطبيعة</span>
+                          <strong>{resolvePermissionNatureLabel(record.permissionNature)}</strong>
+                        </div>
+                      </Col>
+                      <Col xs={24}>
+                        <div className={styles.reasonBlock}>
+                          <span>الأسباب</span>
+                          <p>{record.reasons || '—'}</p>
+                        </div>
+                      </Col>
+                    </Row>
+                  </Col>
+
+                  <Col xs={24} lg={8}>
+                    <div className={styles.approvalPanel}>
+                      <div className={styles.approvalTitle}>مسار الاعتماد</div>
+                      <ApprovalSteps
+                        approval={record.approval}
+                        direction="vertical"
+                        className={styles.approvalSteps}
+                      />
+                    </div>
+                  </Col>
+                </Row>
+
+                <div className={styles.cardActions}>{renderActions(record)}</div>
+              </Card>
+            ))}
+
+            <div className={styles.paginationBar}>
+              <span>إجمالي: {filteredRequests.length} طلب</span>
+              <Pagination
+                current={currentPage}
+                pageSize={pageSize}
+                total={filteredRequests.length}
+                showSizeChanger={false}
+                onChange={setCurrentPage}
+              />
+            </div>
+          </Space>
+        )}
+      </Spin>
 
       <Modal
         open={!!rejectRecord}
@@ -367,7 +416,7 @@ export default function PermissionRequestsPage() {
         open={!!printData}
         title="معاينة الطباعة"
         onCancel={() => setPrintData(null)}
-        footer={<Button onClick={() => window.print()} icon={<PrinterOutlined />}>طباعة</Button>}
+        footer={<Button onClick={printHrRequestPreview} icon={<PrinterOutlined />}>طباعة</Button>}
         width={760}
         destroyOnHidden
       >
