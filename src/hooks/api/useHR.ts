@@ -350,9 +350,6 @@ export function useHRLeave() {
 
   const printMutation = useMutation({
     mutationFn: (requestId: string) => HRLeaveService.print(requestId),
-    onError: (err) => {
-      message.error(extractApiError(err, 'فشل تحميل بيانات الطباعة'));
-    },
   });
 
   return {

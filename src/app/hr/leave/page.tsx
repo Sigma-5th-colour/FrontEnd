@@ -41,6 +41,7 @@ import {
   PrintPreview,
   RequestStatusTag,
   canActOnApprovalStage,
+  printHrRequestPreview,
 } from '@/app/hr/_components/requestWorkflow';
 import styles from './Leave.module.css';
 
@@ -94,6 +95,24 @@ export default function HRLeavePage() {
     r.employeeName || (r.employeeId ? employeeNameById[r.employeeId] : undefined) || '—';
   const resolveLeaveTypeName = (r: LeaveRequestDto) =>
     r.leaveTypeName || (r.leaveTypeId ? leaveTypeNameById[r.leaveTypeId] : undefined) || '—';
+  const formatPrintDate = (value?: string | null) =>
+    value ? dayjs(value).format('YYYY/MM/DD') : '—';
+
+  const buildLeavePrintFallback = (record: LeaveRequestDto): HRRequestPrintDto => ({
+    id: record.id,
+    requestType: 'طلب إجازة',
+    employeeId: record.employeeId,
+    employeeName: resolveEmployeeName(record),
+    status: record.status,
+    approval: record.approval,
+    details: {
+      'نوع الإجازة': resolveLeaveTypeName(record),
+      'من تاريخ': formatPrintDate(record.fromDate),
+      'إلى تاريخ': formatPrintDate(record.toDate),
+      'عدد الأيام': record.daysCount != null ? `${record.daysCount} يوم` : '—',
+      'السبب': record.reason || '—',
+    },
+  });
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const [searchText, setSearchText] = useState('');
@@ -170,13 +189,13 @@ export default function HRLeavePage() {
     }
   };
 
-  const handlePrint = async (id: string) => {
-    setActioningId(id);
+  const handlePrint = async (record: LeaveRequestDto) => {
+    setActioningId(record.id);
     try {
-      const data = await printLeave(id);
+      const data = await printLeave(record.id);
       setPrintData(data);
     } catch {
-      // Hook displays the API error.
+      setPrintData(buildLeavePrintFallback(record));
     } finally {
       setActioningId(null);
     }
@@ -193,7 +212,7 @@ export default function HRLeavePage() {
           <Button
             icon={<PrinterOutlined />}
             loading={isPrinting && actioningId === record.id}
-            onClick={() => handlePrint(record.id)}
+            onClick={() => handlePrint(record)}
           >
             طباعة
           </Button>
@@ -529,7 +548,7 @@ export default function HRLeavePage() {
         open={!!printData}
         title="معاينة الطباعة"
         onCancel={() => setPrintData(null)}
-        footer={<Button onClick={() => window.print()} icon={<PrinterOutlined />}>طباعة</Button>}
+        footer={<Button onClick={printHrRequestPreview} icon={<PrinterOutlined />}>طباعة</Button>}
         width={760}
         destroyOnHidden
       >
