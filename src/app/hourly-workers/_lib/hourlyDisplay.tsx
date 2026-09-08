@@ -85,6 +85,8 @@ export const NOTIFICATION_STATUS: Record<number, LabelDef> = {
   1: { ar: 'تم الإرسال', en: 'Sent', color: 'blue' },
   2: { ar: 'تم التسليم', en: 'Delivered', color: 'green' },
   3: { ar: 'فشل', en: 'Failed', color: 'red' },
+  // Added 2026-09-08 per BACKEND_ENUMS_README.md audit (HourlyNotificationDeliveryStatus).
+  4: { ar: 'تم التجاوز', en: 'Skipped', color: 'default' },
 };
 
 // ── Generic enum tag renderer ───────────────────────────────────────────────────

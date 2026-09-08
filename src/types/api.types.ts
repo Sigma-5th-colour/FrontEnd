@@ -414,7 +414,7 @@ export interface WorkerDto {
   religion?: number | null;
   /** UUID string in new API */
   jobId?: string | null;
-  gender?: number | null; // 0 = Male, 1 = Female
+  gender?: number | null; // 1 = Male, 2 = Female (Gender enum — see BACKEND_ENUMS_README.md)
   /** UUID string in new API */
   nationalityId?: string | null;
   basicSalary?: number | null;
@@ -427,7 +427,7 @@ export interface WorkerDto {
   age?: number | null;
   addressAr?: string | null;
   addressEn?: string | null;
-  maritalStatus?: number | null; // 0 = Single, 1 = Married
+  maritalStatus?: number | null; // 1=Single, 2=Married, 3=Divorced, 4=Widowed (MaritalStatus enum)
   childrenCount?: number | null;
   weight?: number | null;
   height?: number | null;

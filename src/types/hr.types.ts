@@ -394,12 +394,21 @@ export interface EmployeeLeaveBalanceDto {
 // in hr.service.ts) only make the endpoints reachable. Building the actual
 // inbox/outbox screens is out of scope for this pass.
 
+// Full member list confirmed 2026-09-08 against BACKEND_ENUMS_README.md
+// (HRProcessState, Sigma.Domain source) — Leave=9 was already live-verified;
+// the rest were previously left out and only arrived as raw numeric values.
 export const HRProcessState = {
+  Vacation: 1,
+  Permission: 2,
+  Custody: 3,
+  JobModification: 4,
+  Resignation: 5,
+  Entitlements: 6,
+  Loans: 7,
+  Other: 8,
   Leave: 9,
 } as const;
 
-// Other process states still arrive as numeric values; Leave is now confirmed
-// as 9 for the unified HR inbox/outbox filters.
 export type HRProcessState = number;
 
 export interface FilterInboxDto {
@@ -625,12 +634,20 @@ export interface PayrollEmployeeDto {
   remainingAmount?: number | null;
 }
 
-// Payroll-run lifecycle. Verified live: a freshly generated run is status 0 and
-// must be Approved before it can be Closed.
+// Payroll-run lifecycle (PayrollRunStatus). A freshly generated run is status 0
+// (Draft) and must be Approved before it can be Closed — that much was verified
+// live. Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: the backend enum
+// actually has 6 members, not 3 — this previously conflated PendingApproval(1)
+// with Approved, and Approved(2) with Closed, so a run sitting at "Pending
+// Approval" would have displayed/behaved as if already Approved, and a run at
+// the real "Approved" stage would have behaved as if already Closed.
 export const PayrollStatus = {
   Draft: 0,
-  Approved: 1,
-  Closed: 2,
+  PendingApproval: 1,
+  Approved: 2,
+  PartiallyPaid: 3,
+  Paid: 4,
+  Closed: 5,
 } as const;
 
 export interface PayrollRunDto {

@@ -13,28 +13,29 @@
  *   • Posting commits ledger movements; unposting reverses them back to Draft.
  *   • System-generated entries may not be unpostable (business-rule dependent).
  *
- * Enum verification (live, 2026-07-12):
+ * Enum verification (live, 2026-07-12; full member list confirmed 2026-09-08
+ * against BACKEND_ENUMS_README.md, extracted directly from the backend source):
  *   • status/source/referenceType arrive as NUMERIC codes — there are NO
  *     `statusName`/`sourceName` companion fields, so labels are mapped here.
- *   • status values 0 and 1 are in live data (Draft / Posted); 2 and 3 exist in
- *     the enum but are unused in live data — meaning unconfirmed (rendered as a
- *     neutral fallback rather than a guessed business label).
+ *   • status values 0 and 1 are seen in live data (Draft / Posted); 2 and 3
+ *     (PendingApproval / Cancelled) are confirmed enum members but not yet
+ *     observed in live data.
  *   • Filtering accepts the numeric code (Status=1, Source=10) reliably; the old
  *     string labels only worked by coincidence (e.g. Source=System returned 0).
  */
 
 // ==================== Enums ====================
 
-/** Entry status (JournalEntryStatus). 0=Draft, 1=Posted, 2/3 reserved/unconfirmed. */
+/** Entry status (JournalEntryStatus). 0=Draft, 1=Posted, 2=PendingApproval, 3=Cancelled. */
 export type JournalEntryStatus = number;
 
-/** Entry source (JournalEntrySource, 0–13). */
+/** Entry source (JournalEntrySource, 0–14). */
 export type JournalEntrySource = number;
 
 /** Reference classification (JournalReferenceType, 0–4) — drives source navigation. */
 export type JournalReferenceType = number;
 
-export const JE_STATUS = { Draft: 0, Posted: 1 } as const;
+export const JE_STATUS = { Draft: 0, Posted: 1, PendingApproval: 2, Cancelled: 3 } as const;
 
 export const JE_SOURCE = {
   Manual: 0,
@@ -51,6 +52,7 @@ export const JE_SOURCE = {
   Payment: 11,
   Adjustment: 12,
   System: 13,
+  WorkerSelection: 14,
 } as const;
 
 export const JE_REFERENCE_TYPE = {
@@ -95,21 +97,23 @@ export const JOURNAL_SORT_DIRECTION = {
   Desc: 1,
 } as const;
 
-/** Status options for the filter dropdown (only the live/actionable values). */
+/** Status options for the filter dropdown (all 4 confirmed backend members). */
 export const JOURNAL_STATUSES: EnumOption[] = [
   { value: JE_STATUS.Draft, ar: 'غير معمد', en: 'Draft' },
   { value: JE_STATUS.Posted, ar: 'معمد', en: 'Posted' },
+  { value: JE_STATUS.PendingApproval, ar: 'بانتظار الموافقة', en: 'Pending Approval' },
+  { value: JE_STATUS.Cancelled, ar: 'ملغى', en: 'Cancelled' },
 ];
 
-/** Full status label map (covers the reserved 2/3 codes for rendering). */
+/** Full status label map. */
 const STATUS_LABELS: Record<number, { ar: string; en: string }> = {
   0: { ar: 'غير معمد', en: 'Draft' },
   1: { ar: 'معمد', en: 'Posted' },
-  2: { ar: 'حالة 2', en: 'Status 2' },
-  3: { ar: 'حالة 3', en: 'Status 3' },
+  2: { ar: 'بانتظار الموافقة', en: 'Pending Approval' },
+  3: { ar: 'ملغى', en: 'Cancelled' },
 };
 
-/** All 14 source values, Arabic + English labels. */
+/** All 15 source values, Arabic + English labels. */
 export const JOURNAL_SOURCES: EnumOption[] = [
   { value: 0, ar: 'يدوي', en: 'Manual' },
   { value: 1, ar: 'دفعة عميل', en: 'Customer Payment' },
@@ -125,6 +129,7 @@ export const JOURNAL_SOURCES: EnumOption[] = [
   { value: 11, ar: 'دفع / سند', en: 'Payment' },
   { value: 12, ar: 'تسوية / إشعار', en: 'Adjustment' },
   { value: 13, ar: 'نظام', en: 'System' },
+  { value: 14, ar: 'اختيار العاملة', en: 'Worker Selection' },
 ];
 
 export const JOURNAL_REFERENCE_TYPES: EnumOption[] = [

@@ -103,8 +103,9 @@ export default function HRPayrollPage() {
       0
     );
 
-  // Lifecycle: Draft (0) → Approved (1) → Closed (2). `isClosed` is the
-  // authoritative closed flag; status drives whether Approve/Close show.
+  // Lifecycle: Draft (0) → PendingApproval (1) → Approved (2) → PartiallyPaid (3)
+  // → Paid (4) → Closed (5). `isClosed` is the authoritative closed flag; status
+  // drives whether Approve/Close show (any status >= Approved counts as approved).
   const status = payroll?.status ?? PayrollStatus.Draft;
   const isClosed = payroll?.isClosed || status === PayrollStatus.Closed;
   const isApproved = status >= PayrollStatus.Approved;

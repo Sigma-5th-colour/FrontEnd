@@ -108,9 +108,9 @@ export interface PagedResult<T> {
 /**
  * AccountingEvent — the business event that triggers an automatic (event-driven)
  * journal entry. Backend enum (Sigma.Domain.Enums.Account.AccountingEvent) is
- * declared WITHOUT explicit values, so it is 0-indexed:
- *   ContractSigned=0, CustomerPayment=1, AgentCommission=2, VisaIssued=3,
- *   Arrival=4, Escape=5, Ticket=6, Transfer=7
+ * 0-indexed. Full 14-member list confirmed 2026-09-08 against
+ * BACKEND_ENUMS_README.md (extracted from the backend source) — the previous
+ * version here stopped at Transfer=7 and was missing the last 6 members.
  */
 export enum AccountingEvent {
   ContractSigned = 0,
@@ -121,6 +121,12 @@ export enum AccountingEvent {
   Escape = 5,
   Ticket = 6,
   Transfer = 7,
+  ContractRenewal = 8,
+  ContractCancellation = 9,
+  Refund = 10,
+  PenaltyRunaway = 11,
+  EarlyTermination = 12,
+  WorkerSelection = 13,
 }
 
 export interface AccountingEventOption {
@@ -139,6 +145,12 @@ export const ACCOUNTING_EVENTS: AccountingEventOption[] = [
   { value: AccountingEvent.Escape, ar: 'هروب', en: 'Escape' },
   { value: AccountingEvent.Ticket, ar: 'تذكرة', en: 'Ticket' },
   { value: AccountingEvent.Transfer, ar: 'نقل الكفالة', en: 'Transfer' },
+  { value: AccountingEvent.ContractRenewal, ar: 'تجديد العقد', en: 'Contract Renewal' },
+  { value: AccountingEvent.ContractCancellation, ar: 'إلغاء العقد', en: 'Contract Cancellation' },
+  { value: AccountingEvent.Refund, ar: 'استرداد', en: 'Refund' },
+  { value: AccountingEvent.PenaltyRunaway, ar: 'غرامة هروب', en: 'Penalty (Runaway)' },
+  { value: AccountingEvent.EarlyTermination, ar: 'إنهاء مبكر', en: 'Early Termination' },
+  { value: AccountingEvent.WorkerSelection, ar: 'اختيار العاملة', en: 'Worker Selection' },
 ];
 
 /** Resolve an accounting-event value to a display label (tolerant of unknown values). */

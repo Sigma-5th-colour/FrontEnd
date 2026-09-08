@@ -34,14 +34,15 @@ import { useAttendanceAccessGates } from '@/hooks/useActionPermissionGates';
 
 const { Title, Text } = Typography;
 
-// Numeric status codes returned by the API
+// Numeric status codes returned by the API (AttendanceStatus: Unknown=0, Present=1,
+// Absent=2, Late=3). Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: this
+// previously included two fabricated values (4/5, "Official Leave"/"On Leave")
+// that are not members of the backend enum and could never match a real record.
 const STATUS_COLOR: Record<number, string> = {
   0: 'default',
   1: 'success',
   2: 'error',
   3: 'warning',
-  4: 'blue',
-  5: 'purple',
 };
 
 const STATUS_LABEL: Record<number, string> = {
@@ -49,8 +50,6 @@ const STATUS_LABEL: Record<number, string> = {
   1: 'حاضر',
   2: 'غائب',
   3: 'متأخر',
-  4: 'إجازة رسمية',
-  5: 'في إجازة',
 };
 
 // Render a geolocation audit cell: coordinates as a maps link + distance tag.
@@ -364,8 +363,6 @@ export default function HRAttendancePage() {
                     { value: 1, label: 'حاضر' },
                     { value: 2, label: 'غائب' },
                     { value: 3, label: 'متأخر' },
-                    { value: 4, label: 'إجازة رسمية' },
-                    { value: 5, label: 'في إجازة' },
                   ]}
                   style={{ width: 160 }}
                 />

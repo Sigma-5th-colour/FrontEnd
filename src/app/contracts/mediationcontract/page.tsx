@@ -1922,10 +1922,13 @@ export default function MediationContractsPage() {
             label={t.returnReason}
             rules={[{ required: true, message: language === 'ar' ? 'مطلوب' : 'Required' }]}
           >
+            {/* WorkerReturnReason (Sigma.Domain/Enums/MediationEnums.cs), fixed
+                2026-09-08 per BACKEND_ENUMS_README.md audit: this previously used
+                an unrelated, unverified value set (Incompatibility/Misconduct). */}
             <Select placeholder={t.returnReason}>
-              <Select.Option value={1}>{language === 'ar' ? 'لا تناسب' : 'Incompatibility'}</Select.Option>
+              <Select.Option value={1}>{language === 'ar' ? 'إضراب عن العمل' : 'Strike'}</Select.Option>
               <Select.Option value={2}>{language === 'ar' ? 'مرض' : 'Illness'}</Select.Option>
-              <Select.Option value={3}>{language === 'ar' ? 'سوء سلوك' : 'Misconduct'}</Select.Option>
+              <Select.Option value={3}>{language === 'ar' ? 'طلب العميل' : 'Customer Request'}</Select.Option>
               <Select.Option value={4}>{language === 'ar' ? 'أخرى' : 'Other'}</Select.Option>
             </Select>
           </Form.Item>

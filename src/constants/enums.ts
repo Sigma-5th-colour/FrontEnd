@@ -35,28 +35,34 @@ export function toSelectOptions(options: readonly EnumOption[], language: 'ar' |
 }
 
 // ==================== Worker Type ====================
-// نوع العامل
+// نوع العامل (MediationWorkerType — Sigma.Domain/Enums/MediationEnums.cs)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: was wrongly modelled as an
+// appointment-status field (Not Appointed/Appointed/Authorization/Known).
 export const WORKER_TYPE = [
-  { value: 0, labelAr: 'غير معين', labelEn: 'Not Appointed' },
-  { value: 1, labelAr: 'معين', labelEn: 'Appointed' },
-  { value: 2, labelAr: 'تفويض', labelEn: 'Authorization' },
-  { value: 3, labelAr: 'معروفه', labelEn: 'Known' },
+  { value: 0, labelAr: 'غير محدد', labelEn: 'Unspecified' },
+  { value: 1, labelAr: 'عاملة منزلية', labelEn: 'Domestic Worker' },
+  { value: 2, labelAr: 'سائق خاص', labelEn: 'Driver' },
+  { value: 3, labelAr: 'بستاني', labelEn: 'Gardener' },
+  { value: 4, labelAr: 'طاهي', labelEn: 'Cook' },
 ] as const;
 
 // ==================== Religion ====================
-// الديانة
+// الديانة (Religion — backend values confirmed 1-indexed: Muslim=1, Christian=2, Other=3)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: was wrongly 0-indexed with a
+// "Non-Muslim" value 2 (backend has no value 0; value 2 is Christian, not Non-Muslim).
 export const RELIGION = [
-  { value: 0, labelAr: 'غير محدد', labelEn: 'Not Specified' },
   { value: 1, labelAr: 'مسلم', labelEn: 'Muslim' },
-  { value: 2, labelAr: 'غير مسلم', labelEn: 'Non-Muslim' },
+  { value: 2, labelAr: 'مسيحي', labelEn: 'Christian' },
+  { value: 3, labelAr: 'أخرى', labelEn: 'Other' },
 ] as const;
 
 // ==================== Previous Experience ====================
-// سبق له العمل
+// سبق له العمل (PreviousExperience — backend only has 2 members: No=0, Yes=1)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: previously sent 2/3 to an API
+// field that only accepts 0/1 — form submissions of this field were silently wrong.
 export const PREVIOUS_EXPERIENCE = [
-  { value: 0, labelAr: 'غير محدد', labelEn: 'Not Specified' },
-  { value: 3, labelAr: 'سبق له العمل', labelEn: 'Has Previous Experience' },
-  { value: 2, labelAr: 'لم يسبق له العمل', labelEn: 'No Previous Experience' },
+  { value: 0, labelAr: 'لم يسبق له العمل', labelEn: 'No Previous Experience' },
+  { value: 1, labelAr: 'سبق له العمل', labelEn: 'Has Previous Experience' },
 ] as const;
 
 // ==================== Complaint Type ====================
@@ -93,19 +99,23 @@ export const COMPLAINT_PRIORITY = [
 ] as const;
 
 // ==================== Worker Location ====================
-// موقع العامل
+// موقع العامل (WorkerLocation — Sigma.Domain/Enums/ComplaintEnums.cs)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: values 1/2 were swapped
+// (backend 1=AtCustomer, 2=InAccommodation) and a fake 0 value was submitted.
 export const WORKER_LOCATION = [
-  { value: 0, labelAr: 'غير محدد', labelEn: 'Not Specified' },
-  { value: 1, labelAr: 'في السكن', labelEn: 'In Accommodation' },
-  { value: 2, labelAr: 'عند العميل', labelEn: 'At Customer Home' },
+  { value: 1, labelAr: 'عند العميل', labelEn: 'At Customer Home' },
+  { value: 2, labelAr: 'في السكن', labelEn: 'In Accommodation' },
+  { value: 3, labelAr: 'أخرى', labelEn: 'Other' },
 ] as const;
 
-// ==================== Contract Type ====================
-// نوع العقد
+// ==================== Contract Type (Complaints: relatedContractType) ====================
+// نوع العقد المرتبط بالشكوى (RelatedContractType — Sigma.Domain/Enums/ComplaintEnums.cs)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: previous labels/values did not
+// match the backend enum at all (1=Mediation, 2=Operating, 3=Transfer).
 export const CONTRACT_TYPE = [
-  { value: 1, labelAr: 'عقد استقدام', labelEn: 'Recruitment Contract' },
-  { value: 2, labelAr: 'عقد تشغيل', labelEn: 'Rent Contract' },
-  { value: 3, labelAr: 'عقد توسط', labelEn: 'Mediation Contract' },
+  { value: 1, labelAr: 'توسط', labelEn: 'Mediation' },
+  { value: 2, labelAr: 'تشغيل', labelEn: 'Operating' },
+  { value: 3, labelAr: 'نقل كفالة', labelEn: 'Transfer' },
 ] as const;
 
 // ==================== Authorization System ====================
@@ -117,45 +127,58 @@ export const AUTHORIZATION_SYSTEM = [
 ] as const;
 
 // ==================== Gender ====================
-// الجنس
+// الجنس (Gender — backend values confirmed 1-indexed: Male=1, Female=2)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: was wrongly 0-indexed
+// (0=Male, 1=Female); a stale comment in api.types.ts repeated the same error.
 export const GENDER = [
-  { value: 0, labelAr: 'ذكر', labelEn: 'Male' },
-  { value: 1, labelAr: 'أنثى', labelEn: 'Female' },
+  { value: 1, labelAr: 'ذكر', labelEn: 'Male' },
+  { value: 2, labelAr: 'أنثى', labelEn: 'Female' },
 ] as const;
 
 // ==================== Marital Status ====================
-// الحالة الاجتماعية
+// الحالة الاجتماعية (MaritalStatus — backend values confirmed 1-indexed)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: was wrongly 0-indexed.
+// (Customers already use their own correctly 1-indexed CUSTOMER_MARITAL_STATUS —
+// see src/app/customers/page.tsx — which this now matches.)
 export const MARITAL_STATUS = [
-  { value: 0, labelAr: 'أعزب', labelEn: 'Single' },
-  { value: 1, labelAr: 'متزوج', labelEn: 'Married' },
-  { value: 2, labelAr: 'مطلق', labelEn: 'Divorced' },
-  { value: 3, labelAr: 'أرمل', labelEn: 'Widowed' },
+  { value: 1, labelAr: 'أعزب', labelEn: 'Single' },
+  { value: 2, labelAr: 'متزوج', labelEn: 'Married' },
+  { value: 3, labelAr: 'مطلق', labelEn: 'Divorced' },
+  { value: 4, labelAr: 'أرمل', labelEn: 'Widowed' },
 ] as const;
 
 // ==================== Identity Type ====================
-// نوع الهوية
+// نوع الهوية (IdentityType — PassportId=1, IQama=2, FamilyCard=3)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: previous set (National ID/
+// Residency/Passport) neither matched backend values nor backend members.
 export const IDENTITY_TYPE = [
-  { value: 1, labelAr: 'هوية وطنية', labelEn: 'National ID' },
-  { value: 2, labelAr: 'إقامة', labelEn: 'Residency' },
-  { value: 3, labelAr: 'جواز سفر', labelEn: 'Passport' },
+  { value: 1, labelAr: 'جواز سفر', labelEn: 'Passport' },
+  { value: 2, labelAr: 'إقامة', labelEn: 'Residency (Iqama)' },
+  { value: 3, labelAr: 'بطاقة عائلية', labelEn: 'Family Card' },
 ] as const;
 
 // ==================== Housing Type ====================
-// نوع السكن
+// نوع السكن (HousingType — Villa=1, Flat=2, Palace=3, Farm=4, Other=5)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: previous set (Apartment/
+// Villa/Floor/Compound) matched neither the backend values nor its members.
 export const HOUSING_TYPE = [
-  { value: 1, labelAr: 'شقة', labelEn: 'Apartment' },
-  { value: 2, labelAr: 'فيلا', labelEn: 'Villa' },
-  { value: 3, labelAr: 'دور', labelEn: 'Floor' },
-  { value: 4, labelAr: 'مجمع', labelEn: 'Compound' },
+  { value: 1, labelAr: 'فيلا', labelEn: 'Villa' },
+  { value: 2, labelAr: 'شقة', labelEn: 'Flat' },
+  { value: 3, labelAr: 'قصر', labelEn: 'Palace' },
+  { value: 4, labelAr: 'مزرعة', labelEn: 'Farm' },
+  { value: 5, labelAr: 'أخرى', labelEn: 'Other' },
 ] as const;
 
 // ==================== Worker Status ====================
-// حالة العامل
+// حالة العامل (WorkerStatus — Workers & Housing; UnderProcessing=1, InKingdom=2,
+// InAccommodation=3, AtCustomer=4). Currently unused directly (the live write/filter
+// field uses WORKER_SATUS below), but fixed 2026-09-08 to match the backend enum it's
+// named after per the BACKEND_ENUMS_README.md audit.
 export const WORKER_STATUS = [
-  { value: 0, labelAr: 'غير محدد', labelEn: 'Unknown' },
-  { value: 1, labelAr: 'متاح', labelEn: 'Available' },
-  { value: 2, labelAr: 'مخصص', labelEn: 'Assigned' },
-  { value: 3, labelAr: 'في عقد', labelEn: 'In Contract' },
+  { value: 1, labelAr: 'تحت الاعداد', labelEn: 'Under Processing' },
+  { value: 2, labelAr: 'داخل المملكة', labelEn: 'In Kingdom' },
+  { value: 3, labelAr: 'في السكن', labelEn: 'In Accommodation' },
+  { value: 4, labelAr: 'عند العميل', labelEn: 'At Customer' },
 ] as const;
 
 // ==================== Offer Type ====================
@@ -273,23 +296,28 @@ export const MEDIATION_PAYMENT_METHOD = [
 ] as const;
 
 // ==================== Medical Status ====================
-// الحالة الطبية
+// الحالة الطبية (MedicalStatus — Workers & Housing; Fit=1, Unfit=2, UnderReview=3)
+// Fixed 2026-09-08 per BACKEND_ENUMS_README.md audit: previous labels (Pending/
+// Passed/Failed) did not match the backend enum's members.
 export const MEDICAL_STATUS = [
-  { value: 1, labelAr: 'قيد الانتظار', labelEn: 'Pending' },
-  { value: 2, labelAr: 'ناجح', labelEn: 'Passed' },
-  { value: 3, labelAr: 'راسب', labelEn: 'Failed' },
+  { value: 1, labelAr: 'لائق', labelEn: 'Fit' },
+  { value: 2, labelAr: 'غير لائق', labelEn: 'Unfit' },
+  { value: 3, labelAr: 'تحت المراجعة', labelEn: 'Under Review' },
 ] as const;
 
 // ==================== Worker Workflow Status ====================
-// حالة العامل (حالة سير العمل)
-// Note: API field renamed from 'workerSatus' (typo) to 'workerStatus' in new API
+// حالة العامل (حالة سير العمل) — WorkerStatus enum (renamed from 'workerSatus' typo
+// to 'workerStatus' in the new API). Fixed 2026-09-08 per BACKEND_ENUMS_README.md:
+// the live write endpoint only ever accepted [1,2,3,4] (5/6 always 400'd — see the
+// 2026-08-11 audit note previously here), which is now confirmed as the FULL enum
+// (UnderProcessing=1, InKingdom=2, InAccommodation=3, AtCustomer=4) — values 5/6
+// ("Inside Kingdom"/"Deported") were never real members of this enum, they belong
+// to the separate WorkerStatusType/deportation workflow, not this field.
 export const WORKER_SATUS = [
-  { value: 1, labelAr: 'متاح', labelEn: 'Available' },
-  { value: 2, labelAr: 'مرحلة التجربة', labelEn: 'Trial Worker' },
-  { value: 3, labelAr: 'تحت الإجراء', labelEn: 'Under Procedure' },
-  { value: 4, labelAr: 'انسحاب', labelEn: 'Backout' },
-  { value: 5, labelAr: 'داخل المملكة', labelEn: 'Inside Kingdom' },
-  { value: 6, labelAr: 'مرحّل', labelEn: 'Deported' },
+  { value: 1, labelAr: 'تحت الاعداد', labelEn: 'Under Processing' },
+  { value: 2, labelAr: 'داخل المملكة', labelEn: 'In Kingdom' },
+  { value: 3, labelAr: 'في السكن', labelEn: 'In Accommodation' },
+  { value: 4, labelAr: 'عند العميل', labelEn: 'At Customer' },
 ] as const;
 
 // ==================== Worker Contract Type ====================
@@ -364,12 +392,14 @@ export const COMPLAINT_STATUS = [
 
 // ==================== Submission Authority (Issue) ====================
 // جهة التقديم (القضية) — SubmissionAuthority enum in new API
-// Values updated to match new swagger: 1=LaborOffice, 2=Court, 3=Police, 4=LaborCommittee
+// Values: 1=LaborOffice, 2=Court, 3=Police, 4=LaborCommittee, 5=Other.
+// Added the missing Other=5 member 2026-09-08 per BACKEND_ENUMS_README.md.
 export const SUBMISSION_AUTHORITY = [
   { value: 1, labelAr: 'مكتب العمل', labelEn: 'Labor Office' },
   { value: 2, labelAr: 'المحكمة', labelEn: 'Court' },
   { value: 3, labelAr: 'الشرطة', labelEn: 'Police' },
   { value: 4, labelAr: 'اللجنة العمالية', labelEn: 'Labor Committee' },
+  { value: 5, labelAr: 'أخرى', labelEn: 'Other' },
 ] as const;
 
 // ==================== Issue Status (Open/Closed) ====================
@@ -403,13 +433,13 @@ export const MEDIATION_CONTRACT_STATUS = [
 ] as const;
 
 // ==================== Mediation Contract Type ====================
-// نوع عقد الوساطة
-// value 1 = New (verified live). value 2 = Transfer is INFERRED: only "New" and
-// "Transfer" appear in real data and 1=New is confirmed, but the Transfer code
-// was not directly verified. Confirm with backend before relying on it.
+// نوع عقد الوساطة (MediationContractType — New=1, Transfer=2, Renewal=3)
+// Values confirmed 2026-09-08 against BACKEND_ENUMS_README.md (Sigma.Domain source);
+// added the previously-missing Renewal=3 member.
 export const MEDIATION_CONTRACT_TYPE = [
   { value: 1, labelAr: 'جديد', labelEn: 'New' },
   { value: 2, labelAr: 'نقل خدمات', labelEn: 'Transfer' },
+  { value: 3, labelAr: 'تجديد', labelEn: 'Renewal' },
 ] as const;
 
 // ==================== Visa Type ====================
@@ -458,12 +488,16 @@ export const ARRIVAL_DESTINATIONS = [
 ] as const;
 
 // ==================== Transfer Contract Status ====================
-// حالة عقد النقل — values per TransferContractStatus API spec
-// 1=Draft, 4=SentToAuthorities, 5=Approved, 6=Rejected, 7=Completed (via
-// complete() after authority approval — live-confirmed statusName "مكتمل"),
-// 8=TransferCompleted (via direct sign())
+// حالة عقد النقل — TransferContractStatus: 1=Draft, 2=Signed, 3=Paid,
+// 4=SentToAuthorities, 5=Approved, 6=Rejected, 7=Completed (via complete() after
+// authority approval — live-confirmed statusName "مكتمل"), 8=TransferCompleted
+// (via direct sign()). Added the previously-missing Signed=2/Paid=3 members
+// 2026-09-08 per BACKEND_ENUMS_README.md — without them, a contract in either
+// state would render with no matching label.
 export const TRANSFER_CONTRACT_STATUS = [
   { value: 1, labelAr: 'مسودة', labelEn: 'Draft' },
+  { value: 2, labelAr: 'موقّع', labelEn: 'Signed' },
+  { value: 3, labelAr: 'مدفوع', labelEn: 'Paid' },
   { value: 4, labelAr: 'أُرسل للجهات المختصة', labelEn: 'Sent To Authorities' },
   { value: 5, labelAr: 'مقبول', labelEn: 'Approved' },
   { value: 6, labelAr: 'مرفوض', labelEn: 'Rejected' },

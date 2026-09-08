@@ -2361,7 +2361,7 @@ export default function WorkersPage() {
                 <Select
                   size="large"
                   placeholder={t('religion')}
-                  options={toSelectOptions([...RELIGION], language).filter((o) => o.value !== 0)}
+                  options={toSelectOptions([...RELIGION], language)}
                 />
               </Form.Item>
             </Col>
@@ -2491,18 +2491,7 @@ export default function WorkersPage() {
                 <Select
                   size="large"
                   placeholder={t('workerStatus')}
-                  // WORKER_SATUS includes 5 (Inside Kingdom) and 6 (Deported)
-                  // as read-side tab/filter categories, but the live
-                  // WorkerStatus enum on this write endpoint only accepts
-                  // [1,2,3,4] (confirmed live, 2026-08-11 audit — 5/6 always
-                  // 400 "The value is invalid"). Those two look like derived
-                  // states reached via the dedicated Deportation/Handover/
-                  // IssueResidency endpoints, not something to set directly
-                  // here. Excluded from this Select only — the read-side
-                  // filter/tab uses of WORKER_SATUS elsewhere are untouched.
-                  options={toSelectOptions([...WORKER_SATUS], language).filter(
-                    (o) => o.value !== 5 && o.value !== 6
-                  )}
+                  options={toSelectOptions([...WORKER_SATUS], language)}
                 />
               </Form.Item>
             </Col>
