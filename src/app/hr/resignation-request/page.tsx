@@ -150,7 +150,14 @@ export default function ResignationRequestPage() {
                   ({ getFieldValue }) => ({
                     validator(_, value) {
                       const resDate = getFieldValue('resignationDate');
-                      if (!value || !resDate || value.isSameOrAfter(resDate, 'day')) {
+                      // dayjs core (no plugins loaded in this app) has no isSameOrAfter —
+                      // isSame/isAfter are the built-in equivalents.
+                      if (
+                        !value ||
+                        !resDate ||
+                        value.isSame(resDate, 'day') ||
+                        value.isAfter(resDate, 'day')
+                      ) {
                         return Promise.resolve();
                       }
                       return Promise.reject(new Error('يجب أن يكون تاريخ آخر يوم عمل مساوياً أو أكبر من تاريخ الاستقالة'));
