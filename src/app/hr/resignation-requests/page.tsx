@@ -38,6 +38,7 @@ import {
   PrintPreview,
   RequestStatusTag,
   canActOnApprovalStage,
+  printHrRequestPreview,
 } from '../_components/requestWorkflow';
 import styles from './ResignationRequests.module.css';
 
@@ -333,7 +334,7 @@ export default function ResignationRequestsPage() {
         open={!!printData}
         title="معاينة الطباعة"
         onCancel={() => setPrintData(null)}
-        footer={<Button onClick={() => window.print()} icon={<PrinterOutlined />}>طباعة</Button>}
+        footer={<Button onClick={printHrRequestPreview} icon={<PrinterOutlined />}>طباعة</Button>}
         width={760}
         destroyOnHidden
       >
