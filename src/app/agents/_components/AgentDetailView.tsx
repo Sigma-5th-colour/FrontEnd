@@ -11,6 +11,7 @@ import { Avatar, Badge, Descriptions, Divider, Space, Tag } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import type { Agent } from '@/types/api.types';
 import { AGENT_CONTRACT_TYPE, getEnumLabel } from '@/constants/enums';
+import AgentJobsSection from './AgentJobsSection';
 
 export interface AgentDetailViewProps {
   agent: Agent;
@@ -85,6 +86,8 @@ export default function AgentDetailView({ agent, language }: AgentDetailViewProp
         <Descriptions.Item label={t('عقود', 'Contracts')}>{agent.contractsCount || 0}</Descriptions.Item>
         <Descriptions.Item label={t('ملفات', 'Files')}>{agent.filesCount || 0}</Descriptions.Item>
       </Descriptions>
+
+      <AgentJobsSection agentId={String(agent.id)} language={language} />
     </div>
   );
 }
