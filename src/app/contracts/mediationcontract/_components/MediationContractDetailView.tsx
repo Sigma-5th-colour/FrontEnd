@@ -97,14 +97,6 @@ export default function MediationContractDetailView({
     referenceNumber: language === 'ar' ? 'رقم المرجع' : 'Reference #',
     createdBy: language === 'ar' ? 'أُنشئ بواسطة' : 'Created By',
     noPayments: language === 'ar' ? 'لا توجد دفعات مسجلة' : 'No payments recorded',
-    agentDues: language === 'ar' ? 'مستحقات الوكيل' : 'Agent Dues',
-    agentDuesTotal: language === 'ar' ? 'إجمالي مستحق الوكيل' : 'Total Agent Due',
-    agentDuesAccrued: language === 'ar' ? 'تم تقييده' : 'Accrued',
-    agentDuesPaid: language === 'ar' ? 'تم سداده (وصل)' : 'Paid',
-    agentDuesRemaining: language === 'ar' ? 'الباقي للسداد' : 'Remaining to Pay',
-    agentDuesSelection: language === 'ar' ? 'اختيار العامل' : 'Selection',
-    agentDuesVisa: language === 'ar' ? 'التأشيرة' : 'Visa',
-    agentDuesArrival: language === 'ar' ? 'الوصول' : 'Arrival',
   };
 
   // Payment-status tag colour: green = fully paid, orange = partial, red/default otherwise.
@@ -402,62 +394,6 @@ export default function MediationContractDetailView({
                   description={contract.costDescription}
                   style={{ marginBlockStart: 16 }}
                 />
-              )}
-
-              {/* Agent dues (d-8-9.md) — shown once the contract has agent terms */}
-              {(contract.agentDues || (contract.agentCostSAR ?? 0) > 0) && (
-                <div
-                  style={{
-                    marginBlockStart: 20,
-                    padding: 16,
-                    border: '1px solid #f0f0f0',
-                    borderRadius: 8,
-                    background: '#fafafa',
-                  }}
-                >
-                  <div style={{ fontSize: 13, color: '#8c8c8c', marginBlockEnd: 8 }}>{t.agentDues}</div>
-                  <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBlockEnd: 12 }}>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#8c8c8c' }}>{t.agentDuesTotal}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#faad14' }}>
-                        {fmtCurrency(contract.agentDues?.totalDue ?? contract.agentCostSAR)}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#8c8c8c' }}>{t.agentDuesAccrued}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#1890ff' }}>
-                        {fmtCurrency(contract.agentDues?.accrued ?? contract.agentAccruedSAR)}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#8c8c8c' }}>{t.agentDuesPaid}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#52c41a' }}>
-                        {fmtCurrency(contract.agentDues?.paid ?? contract.agentPaidSAR)}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 12, color: '#8c8c8c' }}>{t.agentDuesRemaining}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#ff4d4f' }}>
-                        {fmtCurrency(contract.agentDues?.remainingToPay)}
-                      </div>
-                    </div>
-                  </div>
-                  {contract.agentDues && (
-                    <Descriptions column={3} size="small" bordered>
-                      <Descriptions.Item label={t.agentDuesSelection}>
-                        {fmtCurrency(contract.agentDues.selectionAmount)} (
-                        {contract.agentDues.percentAfterSelection ?? 0}%)
-                      </Descriptions.Item>
-                      <Descriptions.Item label={t.agentDuesVisa}>
-                        {fmtCurrency(contract.agentDues.visaAmount)} ({contract.agentDues.percentAfterVisa ?? 0}%)
-                      </Descriptions.Item>
-                      <Descriptions.Item label={t.agentDuesArrival}>
-                        {fmtCurrency(contract.agentDues.arrivalAmount)} (
-                        {contract.agentDues.percentAfterArrival ?? 0}%)
-                      </Descriptions.Item>
-                    </Descriptions>
-                  )}
-                </div>
               )}
 
               {/* Payment history */}

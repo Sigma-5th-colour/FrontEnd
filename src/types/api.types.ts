@@ -554,92 +554,6 @@ export interface UpdateAgentDto {
   isActive?: boolean | null;
 }
 
-// ==================== Agent Job Types ====================
-// AgentJob — per-agent, per-job cost/commission agreement (d-8-9.md).
-export interface AgentJob {
-  id: string;
-  agentId: string;
-  agentNameAr?: string | null;
-  agentNameEn?: string | null;
-  jobId: string;
-  jobNameAr?: string | null;
-  jobNameEn?: string | null;
-  workerType?: number | null;
-  workerTypeName?: string | null;
-  previousExperience?: number | null;
-  previousExperienceName?: string | null;
-  cost: number;
-  alternativeCost: number;
-  percentAfterSelection: number;
-  percentAfterVisa: number;
-  percentAfterArrival: number;
-  isActive: boolean;
-  notes?: string | null;
-  branchId?: string | null;
-  createdDate?: string | null;
-}
-
-export interface CreateAgentJobDto {
-  agentId: string;
-  jobId: string;
-  workerType?: number | null;
-  previousExperience?: number | null;
-  cost: number;
-  alternativeCost?: number;
-  percentAfterSelection: number;
-  percentAfterVisa: number;
-  percentAfterArrival: number;
-  notes?: string | null;
-  isActive?: boolean;
-}
-
-export interface UpdateAgentJobDto extends CreateAgentJobDto {
-  id: string;
-}
-
-export interface ResolveAgentJobDto {
-  agentId: string;
-  jobId: string;
-  workerType?: number | null;
-  previousExperience?: number | null;
-  useAlternativeCost?: boolean;
-}
-
-export interface ResolveAgentJobResult {
-  found: boolean;
-  jobBelongsToAgent: boolean;
-  message?: string | null;
-  agentJobId?: string | null;
-  agentId?: string | null;
-  jobId?: string | null;
-  jobNameAr?: string | null;
-  cost?: number | null;
-  alternativeCost?: number | null;
-  agentCostSAR?: number | null;
-  percentAfterSelection?: number | null;
-  percentAfterVisa?: number | null;
-  percentAfterArrival?: number | null;
-  workerType?: number | null;
-  previousExperience?: number | null;
-}
-
-export interface AgentDuesSummary {
-  agentId?: string | null;
-  agentNameAr?: string | null;
-  totalDue: number;
-  accrued: number;
-  paid: number;
-  remainingToAccrue: number;
-  remainingToPay: number;
-  percentAfterSelection: number;
-  percentAfterVisa: number;
-  percentAfterArrival: number;
-  selectionAmount: number;
-  visaAmount: number;
-  arrivalAmount: number;
-  currency?: string | null;
-}
-
 // ==================== Job Types ====================
 export interface Job {
   id: number;
@@ -1333,15 +1247,7 @@ export interface MediationContract {
   nationalityNameAr?: string | null;
   jobName?: string | null;
   jobNameAr?: string | null;
-  agentId?: string | null;
   agentName?: string | null;
-  /** Stage-commission percents resolved from the linked AgentJob (d-8-9.md). */
-  percentAfterSelection?: number | null;
-  percentAfterVisa?: number | null;
-  percentAfterArrival?: number | null;
-  /** Agent payable amounts accrued/paid via journal drafts. */
-  agentAccruedSAR?: number | null;
-  agentPaidSAR?: number | null;
   branchName?: string | null;
   /** Branch scoping fields (ErpImprovementsJul2026). */
   branchId?: string | null;
@@ -1635,8 +1541,6 @@ export interface MediationContractDetail extends MediationContract {
   payments?: MediationContractPayment[] | null;
   /** Cost breakdown + paid/remaining totals. */
   financialSummary?: MediationContractFinancialSummary | null;
-  /** Agent dues summary (d-8-9.md) — present when the contract has agent terms. */
-  agentDues?: AgentDuesSummary | null;
   attachments?: string[] | null;
 }
 

@@ -85,17 +85,6 @@ export const API_ENDPOINTS = {
     GET_ALL: '/api/V1/Commission/GetAll',
   },
 
-  // Agent Job — per-agent, per-job cost/commission agreement (d-8-9.md)
-  AGENT_JOB: {
-    GET_ALL: '/api/V1/AgentJob',
-    BY_AGENT: (agentId: string) => `/api/V1/AgentJob/by-agent/${agentId}`,
-    GET_BY_ID: (id: string) => `/api/V1/AgentJob/${id}`,
-    CREATE: '/api/V1/AgentJob',
-    UPDATE: (id: string) => `/api/V1/AgentJob/${id}`,
-    DELETE: (id: string) => `/api/V1/AgentJob/${id}`,
-    RESOLVE: '/api/V1/AgentJob/resolve',
-  },
-
   // Jobs — RESTful /api/V1/Job
   JOB: {
     GET_ALL: '/api/V1/Job',
