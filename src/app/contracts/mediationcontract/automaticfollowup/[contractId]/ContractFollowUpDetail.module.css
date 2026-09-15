@@ -27,6 +27,14 @@
   gap: 12px;
 }
 
+/* Refresh + contract lifecycle actions (end worker service / cancel) */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .pageTitle {
   font-size: 20px;
   font-weight: 700;
@@ -38,6 +46,59 @@
 .summaryCard {
   margin-bottom: 20px;
   border-radius: 8px;
+}
+
+/* ── Identity strip (contract number + contract status) ── */
+.summaryTopRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.summaryAvatar {
+  background: linear-gradient(135deg, #003366 0%, #00478c 100%);
+  flex-shrink: 0;
+}
+
+.summaryHeadline {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.summaryContractNo {
+  font-size: 22px;
+  font-weight: 800;
+  color: #003366;
+  line-height: 1.2;
+}
+
+.summaryHeadlineSub {
+  font-size: 13px;
+  color: #595959;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summaryTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-inline-start: auto;
+}
+
+.summaryStatusTag {
+  font-size: 14px;
+  font-weight: 700;
+  padding-inline: 12px;
+  padding-block: 3px;
+  border-radius: 6px;
 }
 
 .summaryGrid {
@@ -128,43 +189,10 @@
   color: #003366;
 }
 
-.sidebarFilter {
-  margin-bottom: 12px;
-}
-
-.sidebarList {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 640px;
-  overflow-y: auto;
-}
-
-.sidebarItem {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  border: 1px solid transparent;
-  background: #fafafa;
-  border-radius: 6px;
-  padding: 9px 10px;
-  cursor: pointer;
-  text-align: start;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.sidebarItem:hover {
-  background: #f0f5ff;
-}
-
-.sidebarItemActive {
-  background: #e6f0ff;
-  border-color: #003366;
-}
-
-.sidebarItemSettled {
-  opacity: 0.85;
+.sidebarSubtitle {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-top: 2px;
 }
 
 .sidebarItemIndex {
@@ -181,22 +209,74 @@
   flex-shrink: 0;
 }
 
-.sidebarItemName {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a1a2e;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .sidebarItemDot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* ── Timeline (now hosted in the side rail) ── */
+.timelineScroll {
+  max-height: 640px;
+  overflow-y: auto;
+}
+
+/* ── Stages header row (title + filter) inside the main panel ── */
+.stagesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.stagesFilter {
+  width: 200px;
+}
+
+/* ── Stage buttons — "أزرار" per spec, horizontal + wraps ── */
+.stageButtonsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.stageButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e6e6e6;
+  background: #fafafa;
+  border-radius: 20px;
+  padding: 6px 14px 6px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.stageButton:hover {
+  background: #f0f5ff;
+}
+
+.stageButtonActive {
+  background: #e6f0ff;
+  border-color: #003366;
+  color: #003366;
+}
+
+.stageButtonSettled {
+  opacity: 0.85;
+}
+
+/* Stage matching `currentFollowUpItemId` — visual distinction per spec §3.7 */
+.stageButtonCurrent {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15);
 }
 
 /* ── Center detail panel ── */

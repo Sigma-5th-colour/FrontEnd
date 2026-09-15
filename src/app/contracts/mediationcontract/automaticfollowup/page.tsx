@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Button,
@@ -16,6 +16,8 @@ import {
   Empty,
   Spin,
   Avatar,
+  Modal,
+  Form,
 } from 'antd';
 import {
   SearchOutlined,
@@ -27,20 +29,37 @@ import {
   GlobalOutlined,
   CalendarOutlined,
   FileTextOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  EnvironmentOutlined,
+  SafetyCertificateOutlined,
+  SolutionOutlined,
+  ClockCircleOutlined,
+  UserDeleteOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { AdvancedFilterPanel, DateRangeFilter } from '@/components/filters';
+import { useContractActionGates } from '@/hooks/useActionPermissionGates';
 import { useAgents } from '@/hooks/api/useAgents';
 import { useMediationFollowUpDashboard } from '@/hooks/api/useMediationFollowUp';
+import { useMediationContracts } from '@/hooks/api/useMediationContracts';
 import { useNationalities } from '@/hooks/api/useNationalities';
 import { useJobs } from '@/hooks/api/useJobs';
 import { useUsers } from '@/hooks/api/useUsers';
-import { MEDIATION_CONTRACT_STATUS, MEDIATION_CONTRACT_TYPE, toSelectOptions } from '@/constants/enums';
+import {
+  MEDIATION_CONTRACT_STATUS,
+  MEDIATION_CONTRACT_TYPE,
+  CANCEL_BY,
+  toSelectOptions,
+} from '@/constants/enums';
 import { linkProps } from '@/lib/navigation/linkProps';
 import type {
   MediationFollowUpDashboardParams,
-  MediationFollowUpDashboardRow,
+  MediationFollowUpDashboardCard,
+  ContractCancelDto,
 } from '@/types/api.types';
+import { formatCurrency, formatDate } from '../_lib/format';
 import styles from './AutomaticFollowUp.module.css';
 
 type BooleanFilter = 'all' | 'true' | 'false';
@@ -56,8 +75,13 @@ function useT(language: string) {
       workerName: { ar: 'اسم العامل', en: 'Worker Name' },
       passportNumber: { ar: 'رقم الجواز', en: 'Passport No.' },
       customerName: { ar: 'اسم العميل', en: 'Customer' },
-      nationalId: { ar: 'رقم الهوية', en: 'National ID' },
+      nationalId: { ar: 'رقم هوية العميل', en: 'Customer National ID' },
       nationality: { ar: 'الجنسية', en: 'Nationality' },
+      dob: { ar: 'تاريخ الميلاد', en: 'Date of Birth' },
+      customerNationality: { ar: 'جنسية العميل', en: 'Customer Nationality' },
+      workerNationality: { ar: 'جنسية العامل', en: 'Worker Nationality' },
+      workerStatus: { ar: 'حالة العامل', en: 'Worker Status' },
+      offerAmount: { ar: 'العرض', en: 'Offer' },
       musanedNumber: { ar: 'رقم مساند', en: 'Musaned No.' },
       status: { ar: 'الحالة', en: 'Status' },
       dateFrom: { ar: 'من تاريخ', en: 'Date From' },
@@ -77,10 +101,93 @@ function useT(language: string) {
       dateRange: { ar: 'نطاق التاريخ', en: 'Date Range' },
       progress: { ar: 'التقدم', en: 'Progress' },
       createdAt: { ar: 'تاريخ الإنشاء', en: 'Created' },
+      lastUpdated: { ar: 'آخر تحديث', en: 'Last Updated' },
+      agent: { ar: 'الوكيل', en: 'Agent' },
       visaDateLabel: { ar: 'تاريخ التأشيرة', en: 'Visa Date' },
+      dobHijri: { ar: 'تاريخ الميلاد (هجري)', en: 'Date of Birth (Hijri)' },
+      customerPhone: { ar: 'جوال العميل', en: 'Customer Phone' },
+      customerEmail: { ar: 'البريد الإلكتروني', en: 'Email' },
+      customerCity: { ar: 'مدينة العميل', en: 'Customer City' },
+      visaNumber: { ar: 'رقم التأشيرة', en: 'Visa Number' },
+      workerPassport: { ar: 'رقم جواز العامل', en: 'Worker Passport No.' },
+      currentStage: { ar: 'المرحلة الحالية', en: 'Current Stage' },
+      daysSinceUpdate: { ar: 'أيام منذ آخر تحديث', en: 'Days Since Update' },
+      workerExternal: {
+        ar: 'جواز معلق — العامل غير مسجّل',
+        en: 'Passport pending — worker not registered',
+      },
+      totalCost: { ar: 'إجمالي العقد', en: 'Total' },
+      totalPaid: { ar: 'المدفوع', en: 'Paid' },
+      remainingAmount: { ar: 'المتبقي', en: 'Remaining' },
+      paymentStatus: { ar: 'حالة السداد', en: 'Payment Status' },
+      save: { ar: 'حفظ', en: 'Save' },
+      cancel: { ar: 'إلغاء', en: 'Cancel' },
+      submit: { ar: 'إرسال', en: 'Submit' },
+      required: { ar: 'مطلوب', en: 'Required' },
+      endWorkerService: { ar: 'إنهاء خدمة العامل', en: 'End Worker Service' },
+      endServiceReason: { ar: 'سبب الإنهاء (اختياري)', en: 'End Reason (optional)' },
+      endServiceReasonPlaceholder: {
+        ar: 'سبب إنهاء الخدمة...',
+        en: 'Reason for ending service...',
+      },
+      cancelContract: { ar: 'إلغاء العقد (باك أوت)', en: 'Cancel Contract (Backout)' },
+      cancelBy: { ar: 'إلغاء بواسطة', en: 'Cancel By' },
+      cancelNote: { ar: 'سبب الإلغاء', en: 'Cancel Reason' },
+      cancelNotePlaceholder: { ar: 'سبب الإلغاء...', en: 'Cancellation reason...' },
     };
     return (key: string) => map[key]?.[language] ?? map[key]?.['en'] ?? key;
   }, [language]);
+}
+
+// ── Card building blocks ──────────────────────────────────────────────────────
+
+/**
+ * One labelled row in the card's details column. A null/blank value renders as
+ * "—" rather than hiding the row — Frontend_AutomaticFollowUp_README.md §3.2
+ * ("أي قيمة null اعرضها —"), so the same facts sit in the same place on
+ * every card regardless of how much of the contract has been filled in.
+ */
+function CardDetailRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className={styles.detailItem}>
+      {icon}
+      <div className={styles.detailText}>
+        <span className={styles.detailLabel}>{label}</span>
+        <span className={styles.detailValue}>
+          {value === null || value === undefined || value === '' ? '—' : value}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** One row of the right-hand stats breakdown. */
+function CardStatRow({
+  color,
+  label,
+  value,
+}: {
+  color: string;
+  label: string;
+  value: ReactNode;
+}) {
+  return (
+    <div className={styles.statRow}>
+      <span className={styles.statDot} style={{ background: color }} />
+      <span className={styles.statLabel}>{label}</span>
+      <span className={styles.statValue} style={{ color }}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -276,6 +383,61 @@ export default function AutomaticFollowUpPage() {
   const { data: jobs = [] } = useJobs();
   const { users = [] } = useUsers();
 
+  // ── Contract lifecycle actions (End Worker Service / Cancel) ──────────────
+  // Same gates + endpoints as the detail page and the regular contract pages.
+  const contractGates = useContractActionGates();
+  const { endWorkerService, cancelContract, isEndingWorkerService, isCancelling } =
+    useMediationContracts({ enabled: false });
+  const [endServiceRow, setEndServiceRow] = useState<MediationFollowUpDashboardCard | null>(null);
+  const [cancelRow, setCancelRow] = useState<MediationFollowUpDashboardCard | null>(null);
+  const [endServiceForm] = Form.useForm();
+  const [cancelForm] = Form.useForm();
+
+  const isTerminalContract = (row: MediationFollowUpDashboardCard) =>
+    row.statusId === 16 || row.statusId === 17;
+  const rowHasAssignedWorker = (row: MediationFollowUpDashboardCard) =>
+    !!(row.highlights?.workerPassportNumber || row.worker?.passportNumber || row.worker?.photoUrl);
+  const canEndWorkerService = useCallback(
+    (row: MediationFollowUpDashboardCard) =>
+      !isTerminalContract(row) && contractGates.canUpdate && rowHasAssignedWorker(row),
+    [contractGates.canUpdate]
+  );
+  const canCancelContract = useCallback(
+    (row: MediationFollowUpDashboardCard) => !isTerminalContract(row) && contractGates.canCancel,
+    [contractGates.canCancel]
+  );
+
+  const handleEndWorkerService = async () => {
+    if (!endServiceRow?.id) return;
+    try {
+      const values = await endServiceForm.validateFields();
+      await endWorkerService({ contractId: endServiceRow.id, reason: values.reason || null });
+      setEndServiceRow(null);
+      endServiceForm.resetFields();
+      refetch();
+    } catch {
+      // validation + API errors surfaced by the mutation/hook
+    }
+  };
+
+  const handleCancelContract = async () => {
+    if (!cancelRow?.id) return;
+    try {
+      const values = await cancelForm.validateFields();
+      const cancelData: ContractCancelDto = {
+        contractId: cancelRow.id,
+        cancelBy: values.cancelBy,
+        cancelNote: values.cancelNote,
+      };
+      await cancelContract(cancelData);
+      setCancelRow(null);
+      cancelForm.resetFields();
+      refetch();
+    } catch {
+      // validation + API errors surfaced by the mutation/hook
+    }
+  };
+
   const activeFilterCount = [
     contractNumber != null,
     musanedNumber !== '',
@@ -368,20 +530,29 @@ export default function AutomaticFollowUpPage() {
   }, []);
 
   const renderCard = useCallback(
-    (row: MediationFollowUpDashboardRow) => {
-      const id = row.contractId ?? row.id;
-      const createdDate = row.createdAt
-        ? new Date(row.createdAt).toLocaleDateString(language === 'ar' ? 'ar-SA' : 'en-GB')
-        : '—';
-
-      const nationality = row.workerNationalityAr;
+    (row: MediationFollowUpDashboardCard) => {
+      const id = row.id;
+      const lang = language === 'ar' ? 'ar' : 'en';
+      const statusName = language === 'ar' ? row.statusNameAr : row.statusNameEn ?? row.statusNameAr;
+      const lastUpdated = row.lastUpdatedAt ? formatDate(row.lastUpdatedAt, lang) : '—';
+      // `customer`/`agent` hold the same data as `highlights` (§3.5) — used as a
+      // fallback so a field still shows if only one of the two is populated.
+      const workerNationality =
+        (language === 'ar' ? row.highlights?.workerNationalityAr : row.highlights?.workerNationalityEn) ??
+        row.worker?.nationalityAr;
+      const agentName = row.header?.agentName || row.highlights?.agentName || row.agent?.nameAr;
+      const birthDate = row.highlights?.customerBirthDate ?? row.customer?.birthDate;
+      const customerBirthDate = birthDate ? formatDate(birthDate, lang) : null;
+      const customerNationality = row.highlights?.customerNationality ?? row.customer?.nationality;
+      const customerNationalId = row.highlights?.customerNationalId ?? row.customer?.nationalId;
+      const workerPassport = row.highlights?.workerPassportNumber ?? row.worker?.passportNumber;
+      const workerStatus =
+        language === 'ar' ? row.header?.workerStatusNameAr : row.header?.workerStatusNameEn ?? row.header?.workerStatusNameAr;
+      const stages = row.followUpStages ?? [];
+      const completedStages = stages.filter((stage) => stage.result === 2).length;
 
       return (
-        <Card
-          key={row.contractId ?? row.id ?? Math.random().toString()}
-          className={styles.followUpCard}
-          hoverable
-        >
+        <Card key={row.id ?? Math.random().toString()} className={styles.followUpCard} hoverable>
           <div className={styles.cardContent}>
             {/* ── Left Panel ── */}
             <div className={styles.cardLeft}>
@@ -398,44 +569,87 @@ export default function AutomaticFollowUpPage() {
               </div>
 
               <div className={styles.tagsSection}>
-                {row.statusName && (
-                  <Tag color="blue" className={styles.typeTag}>{row.statusName}</Tag>
+                {statusName && (
+                  <Tag color="blue" className={styles.typeTag}>{statusName}</Tag>
                 )}
-                {row.workerTypeName && (
-                  <Tag color="geekblue">{row.workerTypeName}</Tag>
+                {row.header?.contractCategoryName && (
+                  <Tag color="geekblue">{row.header.contractCategoryName}</Tag>
                 )}
+                {workerStatus && <Tag color="purple">{workerStatus}</Tag>}
+                {row.worker?.isExternal && <Tag color="orange">{t('workerExternal')}</Tag>}
               </div>
 
-              {/* Worker row */}
+              {/* Customer row — always shown per the highlights contract, even
+                  before a worker is assigned or any stage is completed. */}
               <div className={styles.customerSection}>
                 <Avatar size={44} icon={<UserOutlined />} className={styles.customerAvatar} />
                 <div className={styles.customerDetails}>
-                  <span className={styles.customerName}>{row.workerName || '—'}</span>
+                  <span className={styles.customerName}>{row.header?.customerName || '—'}</span>
                   <div className={styles.customerMeta}>
                     <IdcardOutlined />
-                    <span dir="ltr">{row.workerPassportNumber || '—'}</span>
+                    <span>{t('workerPassport')}:</span>
+                    <span dir="ltr">{workerPassport || '—'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Extra details */}
+              {/* Extra details — the highlights the client asked to always show
+                  up front, not gated behind stage completion: agent name, DOB
+                  (+ Hijri), customer nationality, worker nationality, customer
+                  national ID, worker passport (above) — plus the `header`
+                  contact block (phone, email, city, visa number). Rows always
+                  render, with "—" for a missing value (§3.2). */}
               <div className={styles.detailsSection}>
-                <div className={styles.detailItem}>
-                  <UserOutlined className={styles.detailIcon} />
-                  <div className={styles.detailText}>
-                    <span className={styles.detailLabel}>{t('customerName')}</span>
-                    <span className={styles.detailValue}>{row.customerName || '—'}</span>
-                  </div>
-                </div>
-                {nationality && (
-                  <div className={styles.detailItem}>
-                    <GlobalOutlined className={styles.detailIcon} />
-                    <div className={styles.detailText}>
-                      <span className={styles.detailLabel}>{t('nationality')}</span>
-                      <span className={styles.detailValue}>{nationality}</span>
-                    </div>
-                  </div>
-                )}
+                <CardDetailRow
+                  icon={<SolutionOutlined className={styles.detailIcon} />}
+                  label={t('agent')}
+                  value={agentName}
+                />
+                <CardDetailRow
+                  icon={<CalendarOutlined className={styles.detailIcon} />}
+                  label={t('dob')}
+                  value={customerBirthDate}
+                />
+                <CardDetailRow
+                  icon={<CalendarOutlined className={styles.detailIcon} />}
+                  label={t('dobHijri')}
+                  value={row.highlights?.customerBirthDateHijri}
+                />
+                <CardDetailRow
+                  icon={<GlobalOutlined className={styles.detailIcon} />}
+                  label={t('customerNationality')}
+                  value={customerNationality}
+                />
+                <CardDetailRow
+                  icon={<GlobalOutlined className={styles.detailIcon} />}
+                  label={t('workerNationality')}
+                  value={workerNationality}
+                />
+                <CardDetailRow
+                  icon={<IdcardOutlined className={styles.detailIcon} />}
+                  label={t('nationalId')}
+                  value={customerNationalId}
+                />
+                <CardDetailRow
+                  icon={<PhoneOutlined className={styles.detailIcon} />}
+                  label={t('customerPhone')}
+                  value={row.header?.customerPhone}
+                />
+                <CardDetailRow
+                  icon={<MailOutlined className={styles.detailIcon} />}
+                  label={t('customerEmail')}
+                  value={row.header?.customerEmail}
+                />
+                <CardDetailRow
+                  icon={<EnvironmentOutlined className={styles.detailIcon} />}
+                  label={t('customerCity')}
+                  value={row.header?.customerCity}
+                />
+                <CardDetailRow
+                  icon={<SafetyCertificateOutlined className={styles.detailIcon} />}
+                  label={t('visaNumber')}
+                  value={row.header?.visaNumber}
+                />
               </div>
             </div>
 
@@ -448,7 +662,7 @@ export default function AutomaticFollowUpPage() {
                   <span className={styles.progressBannerLabel}>{t('status')}</span>
                 </div>
                 <div className={styles.progressBannerValue}>
-                  {row.statusName || '—'}
+                  {statusName || '—'}
                 </div>
                 {row.daysSinceCreation != null && (
                   <div className={styles.progressBannerSub}>
@@ -462,28 +676,77 @@ export default function AutomaticFollowUpPage() {
 
               {/* Stats breakdown */}
               <div className={styles.statsBreakdown}>
-                <div className={styles.statRow}>
-                  <span className={styles.statDot} style={{ background: '#003366' }} />
-                  <span className={styles.statLabel}>{t('contractNumber')}</span>
-                  <span className={styles.statValue} style={{ color: '#003366' }}>
-                    #{row.contractNumber ?? '—'}
-                  </span>
-                </div>
-                <div className={styles.statRow}>
-                  <span className={styles.statDot} style={{ background: '#52c41a' }} />
-                  <span className={styles.statLabel}>{t('musanedNumber')}</span>
-                  <span className={styles.statValue} style={{ color: '#52c41a' }}>
-                    <span className={styles.mono}>{row.musanedContractNumber || '—'}</span>
-                  </span>
-                </div>
+                <CardStatRow
+                  color="#003366"
+                  label={t('contractNumber')}
+                  value={`#${row.contractNumber ?? '—'}`}
+                />
+                <CardStatRow
+                  color="#52c41a"
+                  label={t('musanedNumber')}
+                  value={<span className={styles.mono}>{row.musanedContractNumber || '—'}</span>}
+                />
+                <CardStatRow
+                  color="#722ed1"
+                  label={t('currentStage')}
+                  value={row.currentFollowUpStatusNameAr || '—'}
+                />
+                {stages.length > 0 && (
+                  <CardStatRow
+                    color="#1677ff"
+                    label={t('progress')}
+                    value={<span dir="ltr">{completedStages}/{stages.length}</span>}
+                  />
+                )}
+                {row.offer?.offerAmount != null && (
+                  <CardStatRow
+                    color="#faad14"
+                    label={t('offerAmount')}
+                    value={formatCurrency(row.offer.offerAmount, lang)}
+                  />
+                )}
+                {row.offer?.totalCost != null && (
+                  <CardStatRow
+                    color="#003366"
+                    label={t('totalCost')}
+                    value={formatCurrency(row.offer.totalCost, lang)}
+                  />
+                )}
+                {row.offer?.totalPaid != null && (
+                  <CardStatRow
+                    color="#52c41a"
+                    label={t('totalPaid')}
+                    value={formatCurrency(row.offer.totalPaid, lang)}
+                  />
+                )}
+                {row.offer?.remainingAmount != null && (
+                  <CardStatRow
+                    color="#fa541c"
+                    label={t('remainingAmount')}
+                    value={formatCurrency(row.offer.remainingAmount, lang)}
+                  />
+                )}
+                {row.offer?.paymentStatus && (
+                  <CardStatRow
+                    color="#13c2c2"
+                    label={t('paymentStatus')}
+                    value={row.offer.paymentStatus}
+                  />
+                )}
               </div>
 
-              {/* Date */}
+              {/* Dates */}
               <div className={styles.datesSection}>
                 <div className={styles.dateItem}>
                   <CalendarOutlined />
-                  <span>{createdDate}</span>
+                  <span>{t('lastUpdated')}: {lastUpdated}</span>
                 </div>
+                {row.daysSinceLastUpdate != null && (
+                  <div className={styles.dateItem}>
+                    <ClockCircleOutlined />
+                    <span>{t('daysSinceUpdate')}: {row.daysSinceLastUpdate}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -502,12 +765,44 @@ export default function AutomaticFollowUpPage() {
                   {t('viewDetails')}
                 </Button>
               </Tooltip>
+              {canEndWorkerService(row) && (
+                <Tooltip title={t('endWorkerService')}>
+                  <Button
+                    type="link"
+                    danger
+                    icon={<UserDeleteOutlined />}
+                    className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                    onClick={() => {
+                      endServiceForm.resetFields();
+                      setEndServiceRow(row);
+                    }}
+                  >
+                    {t('endWorkerService')}
+                  </Button>
+                </Tooltip>
+              )}
+              {canCancelContract(row) && (
+                <Tooltip title={t('cancelContract')}>
+                  <Button
+                    type="link"
+                    danger
+                    icon={<CloseCircleOutlined />}
+                    className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
+                    onClick={() => {
+                      cancelForm.resetFields();
+                      setCancelRow(row);
+                    }}
+                  >
+                    {t('cancelContract')}
+                  </Button>
+                </Tooltip>
+              )}
             </div>
           </div>
         </Card>
       );
     },
-    [t, language, router]
+    [t, language, router, endServiceForm, cancelForm, canEndWorkerService, canCancelContract]
   );
 
   return (
@@ -847,6 +1142,74 @@ export default function AutomaticFollowUpPage() {
           />
         </div>
       )}
+
+      {/* ========== END WORKER SERVICE MODAL ========== */}
+      <Modal
+        title={
+          <span>
+            <UserDeleteOutlined style={{ marginInlineEnd: 8 }} />
+            {t('endWorkerService')}
+            {endServiceRow?.contractNumber != null && ` — #${endServiceRow.contractNumber}`}
+          </span>
+        }
+        open={!!endServiceRow}
+        onCancel={() => {
+          setEndServiceRow(null);
+          endServiceForm.resetFields();
+        }}
+        onOk={handleEndWorkerService}
+        okText={t('save')}
+        cancelText={t('cancel')}
+        confirmLoading={isEndingWorkerService}
+        okButtonProps={{ danger: true }}
+      >
+        <Form form={endServiceForm} layout="vertical">
+          <Form.Item name="reason" label={t('endServiceReason')}>
+            <Input.TextArea rows={3} placeholder={t('endServiceReasonPlaceholder')} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* ========== CANCEL CONTRACT MODAL ========== */}
+      <Modal
+        title={
+          <span>
+            <CloseCircleOutlined style={{ marginInlineEnd: 8 }} />
+            {t('cancelContract')}
+            {cancelRow?.contractNumber != null && ` — #${cancelRow.contractNumber}`}
+          </span>
+        }
+        open={!!cancelRow}
+        onCancel={() => {
+          setCancelRow(null);
+          cancelForm.resetFields();
+        }}
+        onOk={handleCancelContract}
+        okText={t('submit')}
+        cancelText={t('cancel')}
+        confirmLoading={isCancelling}
+        okButtonProps={{ danger: true }}
+      >
+        <Form form={cancelForm} layout="vertical">
+          <Form.Item
+            name="cancelBy"
+            label={t('cancelBy')}
+            rules={[{ required: true, message: t('required') }]}
+          >
+            <Select
+              placeholder={t('cancelBy')}
+              options={toSelectOptions([...CANCEL_BY], isRTL ? 'ar' : 'en')}
+            />
+          </Form.Item>
+          <Form.Item
+            name="cancelNote"
+            label={t('cancelNote')}
+            rules={[{ required: true, message: t('required') }]}
+          >
+            <Input.TextArea rows={3} placeholder={t('cancelNotePlaceholder')} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

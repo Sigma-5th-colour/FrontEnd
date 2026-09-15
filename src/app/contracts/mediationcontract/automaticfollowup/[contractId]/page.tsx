@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
+  Avatar,
   Button,
   Spin,
   Empty,
@@ -13,6 +14,10 @@ import {
   Card,
   Select,
   Divider,
+  Timeline,
+  Modal,
+  Form,
+  Input,
   message,
 } from 'antd';
 import {
@@ -24,22 +29,31 @@ import {
   EditOutlined,
   ReloadOutlined,
   UserOutlined,
+  UserDeleteOutlined,
   IdcardOutlined,
   GlobalOutlined,
+  FileProtectOutlined,
   CalendarOutlined,
   FileTextOutlined,
   SolutionOutlined,
+  HistoryOutlined,
+  PhoneOutlined,
+  EnvironmentOutlined,
+  DollarOutlined,
+  HeartOutlined,
+  MailOutlined,
+  SafetyCertificateOutlined,
+  TagOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { APP_PERMISSIONS } from '@/config/appPermissions';
 import { useHasPermission } from '@/hooks/api/usePagePermissions';
+import { useContractActionGates } from '@/hooks/useActionPermissionGates';
 import {
-  useMediationFollowUpItems,
+  useMediationFollowUpDashboardCard,
   useUpdateFollowUpDescription,
 } from '@/hooks/api/useMediationFollowUp';
-import { useMediationContract } from '@/hooks/api/useMediationContracts';
-import { useCustomerById } from '@/hooks/api/useCustomers';
-import { useNationality } from '@/hooks/api/useNationalities';
+import { useMediationContracts } from '@/hooks/api/useMediationContracts';
 import { InputDescriptionModal } from '@/components/followup/InputDescriptionModal';
 import {
   hasFilledInputDescription,
@@ -47,9 +61,14 @@ import {
   getStatusFieldName,
   ITEM_STATUS_OPTIONS,
 } from '@/types/follow-up-forms.types';
-import { AUTHORIZATION_SYSTEM } from '@/constants/enums';
-import type { MediationFollowUpItem } from '@/types/api.types';
-import { formatDate } from '../../_lib/format';
+import { AUTHORIZATION_SYSTEM, CANCEL_BY, toSelectOptions } from '@/constants/enums';
+import type {
+  ContractCancelDto,
+  MediationFollowUpItem,
+  MediationFollowUpDashboardCard as FollowUpCard,
+} from '@/types/api.types';
+import { resolveImageUrl } from '@/utils/image';
+import { formatDate, formatCurrency } from '../../_lib/format';
 import styles from './ContractFollowUpDetail.module.css';
 
 // ── Translations ──────────────────────────────────────────────────────────────
@@ -87,14 +106,56 @@ function useT(language: string) {
       },
       summaryCustomerName: { ar: 'اسم العميل', en: 'Customer Name' },
       summaryDob: { ar: 'تاريخ الميلاد', en: 'Date of Birth' },
+      summaryDobHijri: { ar: 'تاريخ الميلاد (هجري)', en: 'Date of Birth (Hijri)' },
       summaryClientNationality: { ar: 'جنسية العميل', en: 'Client Nationality' },
       summaryClientNationalId: { ar: 'رقم هوية العميل', en: 'Client National ID' },
-      summaryWorkerName: { ar: 'اسم العامل', en: 'Worker Name' },
       summaryWorkerNationality: { ar: 'جنسية العامل', en: 'Worker Nationality' },
       summaryWorkerPassport: { ar: 'رقم جواز العامل', en: 'Worker Passport No.' },
       summaryAgentName: { ar: 'اسم الوكيل', en: 'Agent Name' },
       summaryContractNumber: { ar: 'رقم العقد', en: 'Contract No.' },
       summaryMusanedNumber: { ar: 'رقم مساند', en: 'Musaned No.' },
+      summaryCustomerPhone: { ar: 'جوال العميل', en: 'Customer Phone' },
+      summaryCustomerCity: { ar: 'مدينة العميل', en: 'Customer City' },
+      summaryWorkerStatus: { ar: 'حالة العامل', en: 'Worker Status' },
+      summaryWorkerAge: { ar: 'عمر العامل', en: 'Worker Age' },
+      summaryWorkerReligion: { ar: 'ديانة العامل', en: 'Worker Religion' },
+      summaryCurrentStage: { ar: 'المرحلة الحالية', en: 'Current Stage' },
+      summaryDaysSinceUpdate: { ar: 'أيام منذ آخر تحديث', en: 'Days Since Last Update' },
+      summaryLastUpdatedAt: { ar: 'تاريخ آخر تحديث', en: 'Last Updated On' },
+      summaryDaysSinceCreation: { ar: 'أيام منذ الإنشاء', en: 'Days Since Creation' },
+      summaryContractStatus: { ar: 'حالة العقد', en: 'Contract Status' },
+      summaryVisaNumber: { ar: 'رقم التأشيرة', en: 'Visa Number' },
+      summaryCustomerEmail: { ar: 'البريد الإلكتروني', en: 'Email' },
+      summaryContractCategory: { ar: 'فئة العقد', en: 'Contract Category' },
+      workerExternal: {
+        ar: 'جواز معلق — العامل غير مسجّل',
+        en: 'Passport pending — worker not registered',
+      },
+      timelineTitle: { ar: 'الجدول الزمني للعقد', en: 'Contract Timeline' },
+      noTimeline: { ar: 'لا يوجد سجل حالات لهذا العقد', en: 'No status history for this contract' },
+      offerTitle: { ar: 'بيانات العرض', en: 'Offer Details' },
+      offerAmount: { ar: 'العرض', en: 'Offer' },
+      otherCosts: { ar: 'أخرى', en: 'Other Costs' },
+      offerSalary: { ar: 'الراتب', en: 'Salary' },
+      taxValue: { ar: 'الضريبة', en: 'Tax' },
+      offerTotalCost: { ar: 'الإجمالي', en: 'Total' },
+      totalPaid: { ar: 'المدفوع', en: 'Paid' },
+      remainingAmount: { ar: 'المتبقي', en: 'Remaining' },
+      offerPaymentStatus: { ar: 'حالة السداد', en: 'Payment Status' },
+      save: { ar: 'حفظ', en: 'Save' },
+      cancel: { ar: 'إلغاء', en: 'Cancel' },
+      submit: { ar: 'إرسال', en: 'Submit' },
+      required: { ar: 'مطلوب', en: 'Required' },
+      endWorkerService: { ar: 'إنهاء خدمة العامل', en: 'End Worker Service' },
+      endServiceReason: { ar: 'سبب الإنهاء (اختياري)', en: 'End Reason (optional)' },
+      endServiceReasonPlaceholder: {
+        ar: 'سبب إنهاء الخدمة...',
+        en: 'Reason for ending service...',
+      },
+      cancelContract: { ar: 'إلغاء العقد (باك أوت)', en: 'Cancel Contract (Backout)' },
+      cancelBy: { ar: 'إلغاء بواسطة', en: 'Cancel By' },
+      cancelNote: { ar: 'سبب الإلغاء', en: 'Cancel Reason' },
+      cancelNotePlaceholder: { ar: 'سبب الإلغاء...', en: 'Cancellation reason...' },
     };
     return (key: string) => map[key]?.[language] ?? map[key]?.['en'] ?? key;
   }, [language]);
@@ -124,6 +185,25 @@ function resultDotColor(result: number | null | undefined): string {
   }
 }
 
+/**
+ * Contract-status tag colour. Codes are the `statusId` values listed in
+ * Frontend_AutomaticFollowUp_README.md §6.
+ */
+function contractStatusColor(statusId: number | null | undefined): string {
+  switch (statusId) {
+    case 13: // تم التسليم
+    case 15: // اكتمال العقد
+      return 'success';
+    case 14: // فترة الضمان
+    case 16: // تم إرجاع العاملة
+      return 'warning';
+    case 17: // ملغي
+      return 'error';
+    default:
+      return 'processing';
+  }
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ContractFollowUpDetailPage() {
@@ -135,17 +215,32 @@ export default function ContractFollowUpDetailPage() {
   const t = useT(language);
   const { has } = useHasPermission();
   const canManageFollowUp = has(APP_PERMISSIONS.AUTOMATIC_FOLLOW_UP_MANAGE);
+  // Same gates the regular contract list/detail pages use for these two
+  // lifecycle actions — CONTRACTS_UPDATE ends a worker's service,
+  // CONTRACTS_DELETE cancels ("باك أوت") the contract.
+  const contractGates = useContractActionGates();
 
   const [inputFormItem, setInputFormItem] = useState<MediationFollowUpItem | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [resultFilter, setResultFilter] = useState<'all' | '1' | '2' | '3' | '4'>('all');
+  const [showEndServiceModal, setShowEndServiceModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [endServiceForm] = Form.useForm();
+  const [cancelForm] = Form.useForm();
 
-  const { data: items = [], isLoading, refetch } = useMediationFollowUpItems(contractId);
-  const { data: contract, isLoading: contractLoading } = useMediationContract(contractId);
-  const { data: customer, isLoading: customerLoading } = useCustomerById(contract?.customerId);
-  const { data: customerNationality } = useNationality(customer?.nationality ?? '');
+  // Single call for identity + timeline + stages — see
+  // Frontend_AutomaticFollowUp_README.md §4: the detail screen uses the same
+  // payload as GET /dashboard/{contractId}, no separate contract/customer/
+  // nationality lookups needed.
+  const { data: card, isLoading, refetch } = useMediationFollowUpDashboardCard(contractId);
+  const items = useMemo(() => card?.followUpStages ?? [], [card]);
 
   const updateDescMutation = useUpdateFollowUpDescription(contractId);
+
+  // Mutations only — `enabled: false` skips the contract list fetch this screen
+  // has no use for.
+  const { endWorkerService, cancelContract, isEndingWorkerService, isCancelling } =
+    useMediationContracts({ enabled: false });
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
@@ -174,7 +269,55 @@ export default function ContractFollowUpDetailPage() {
     [sortedItems, selectedItemId]
   );
 
+  // ── Contract lifecycle action gates ───────────────────────────────────────
+  // Mirrors the list page: both actions disappear once the contract is in a
+  // terminal state. Codes per Frontend_AutomaticFollowUp_README.md §6 —
+  // 16 = تم إرجاع العاملة ("returned"), 17 = ملغي ("cancelled").
+  const isTerminalContract = card?.statusId === 16 || card?.statusId === 17;
+  // The end-service endpoint 400s when nothing is assigned, so mirror
+  // MediationContractDetailView's "registered worker or pending passport" gate
+  // using the fields this card actually carries.
+  const hasAssignedWorker = !!(
+    card?.highlights?.workerPassportNumber ||
+    card?.worker?.passportNumber ||
+    card?.worker?.photoUrl
+  );
+  const canEndWorkerService =
+    !!card && !isTerminalContract && contractGates.canUpdate && hasAssignedWorker;
+  const canCancelContract = !!card && !isTerminalContract && contractGates.canCancel;
+
   // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleEndWorkerService = async () => {
+    if (!contractId || !canEndWorkerService) return;
+    try {
+      const values = await endServiceForm.validateFields();
+      await endWorkerService({ contractId, reason: values.reason || null });
+      setShowEndServiceModal(false);
+      endServiceForm.resetFields();
+      refetch();
+    } catch {
+      // validation + API errors surfaced by the mutation/hook
+    }
+  };
+
+  const handleCancelContract = async () => {
+    if (!contractId || !canCancelContract) return;
+    try {
+      const values = await cancelForm.validateFields();
+      const data: ContractCancelDto = {
+        contractId,
+        cancelBy: values.cancelBy,
+        cancelNote: values.cancelNote,
+      };
+      await cancelContract(data);
+      setShowCancelModal(false);
+      cancelForm.resetFields();
+      refetch();
+    } catch {
+      // validation + API errors surfaced by the mutation/hook
+    }
+  };
 
   const openInputForm = (item: MediationFollowUpItem) => {
     if (!canManageFollowUp) return;
@@ -206,19 +349,46 @@ export default function ContractFollowUpDetailPage() {
   return (
     <div className={styles.container} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* ── Header ── */}
-      <PageHeader t={t} router={router} refetch={refetch} isLoading={isLoading} />
-
-      {/* ── Summary bar — always visible, independent of stage data being filled ── */}
-      <SummaryHeader
+      <PageHeader
         t={t}
-        isRTL={isRTL}
-        contract={contract}
-        customer={customer}
-        customerNationalityLabel={
-          isRTL ? customerNationality?.nationalityNameAr : customerNationality?.nationalityNameEn
+        router={router}
+        refetch={refetch}
+        isLoading={isLoading}
+        actions={
+          <>
+            {canEndWorkerService && (
+              <Button
+                danger
+                icon={<UserDeleteOutlined />}
+                onClick={() => {
+                  endServiceForm.resetFields();
+                  setShowEndServiceModal(true);
+                }}
+              >
+                {t('endWorkerService')}
+              </Button>
+            )}
+            {canCancelContract && (
+              <Button
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={() => {
+                  cancelForm.resetFields();
+                  setShowCancelModal(true);
+                }}
+              >
+                {t('cancelContract')}
+              </Button>
+            )}
+          </>
         }
-        loading={contractLoading || customerLoading}
       />
+
+      {/* ── Summary bar — always visible, independent of stage data being filled;
+          highlights (DOB, nationalities, national ID, passport, agent) shown up
+          front, per the client's "مثل شاشة مساعد" request ── */}
+      <SummaryHeader t={t} isRTL={isRTL} card={card} loading={isLoading && !card} />
+      <OfferSummary t={t} isRTL={isRTL} card={card} loading={isLoading && !card} />
 
       {!isLoading && sortedItems.length === 0 ? (
         <div className={styles.centered}>
@@ -226,50 +396,50 @@ export default function ContractFollowUpDetailPage() {
         </div>
       ) : (
         <div className={styles.layout}>
-          {/* ── Side rail: stage list ── */}
-          <aside className={styles.sidebar}>
-            <div className={styles.sidebarHeader}>
+          {/* ── Middle: stages (as buttons) + selected stage's details ── */}
+          <main className={styles.mainDetail}>
+            <div className={styles.stagesHeader}>
               <span className={styles.sidebarTitle}>{t('stagesListTitle')}</span>
+              <Select
+                className={styles.stagesFilter}
+                value={resultFilter}
+                onChange={(v) => setResultFilter(v)}
+                options={[
+                  { value: 'all', label: t('filterAll') },
+                  { value: '1', label: t('statusPending') },
+                  { value: '2', label: t('statusCompleted') },
+                  { value: '3', label: t('statusFailed') },
+                  { value: '4', label: t('statusSkipped') },
+                ]}
+              />
             </div>
-            <Select
-              className={styles.sidebarFilter}
-              value={resultFilter}
-              onChange={(v) => setResultFilter(v)}
-              style={{ width: '100%' }}
-              options={[
-                { value: 'all', label: t('filterAll') },
-                { value: '1', label: t('statusPending') },
-                { value: '2', label: t('statusCompleted') },
-                { value: '3', label: t('statusFailed') },
-                { value: '4', label: t('statusSkipped') },
-              ]}
-            />
-            <div className={styles.sidebarList}>
+            <div className={styles.stageButtonsRow}>
               {filteredItems.length === 0 ? (
                 <Empty description={t('noItemsForFilter')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
                 filteredItems.map((item) => (
-                  <SidebarItem
+                  <StageChip
                     key={item.id}
                     item={item}
                     idx={sortedItems.findIndex((i) => i.id === item.id)}
                     isRTL={isRTL}
                     isActive={item.id === selectedItemId}
+                    isCurrent={!!item.id && item.id === card?.currentFollowUpItemId}
                     onClick={() => setSelectedItemId(item.id ?? null)}
                   />
                 ))
               )}
             </div>
-          </aside>
 
-          {/* ── Center: selected stage details ── */}
-          <main className={styles.mainDetail}>
+            <Divider style={{ margin: '16px 0' }} />
+
             {selectedItem ? (
               <StageDetailPanel
                 item={selectedItem}
                 idx={sortedItems.findIndex((i) => i.id === selectedItem.id)}
                 isRTL={isRTL}
                 t={t}
+                isCurrent={!!selectedItem.id && selectedItem.id === card?.currentFollowUpItemId}
                 onFillForm={openInputForm}
                 canManage={canManageFollowUp}
               />
@@ -279,6 +449,47 @@ export default function ContractFollowUpDetailPage() {
               </Card>
             )}
           </main>
+
+          {/* ── Side: contract status timeline (§3.6 — "الحالات على جنب") ── */}
+          <aside className={styles.sidebar}>
+            <div className={styles.sidebarHeader}>
+              <span className={styles.sidebarTitle}>
+                <HistoryOutlined style={{ marginInlineEnd: 8 }} />
+                {t('timelineTitle')}
+              </span>
+              {/* §3.6: show the contract's Musaned number alongside the statuses. */}
+              {card?.musanedContractNumber && (
+                <div className={styles.sidebarSubtitle}>
+                  {t('summaryMusanedNumber')}: {card.musanedContractNumber}
+                </div>
+              )}
+            </div>
+            {card?.timeline && card.timeline.length > 0 ? (
+              <div className={styles.timelineScroll}>
+                <Timeline
+                  items={card.timeline.map((event) => ({
+                    color: event.isCurrent ? 'blue' : 'gray',
+                    children: (
+                      <div>
+                        <div style={{ fontWeight: event.isCurrent ? 700 : 400 }}>
+                          {(isRTL ? event.statusNameAr : event.statusNameEn) || '—'}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>
+                          {formatDate(event.date, isRTL ? 'ar' : 'en')}
+                          {event.createdByName ? ` · ${event.createdByName}` : ''}
+                        </div>
+                        {event.notes && (
+                          <div style={{ fontSize: 12, color: '#595959' }}>{event.notes}</div>
+                        )}
+                      </div>
+                    ),
+                  }))}
+                />
+              </div>
+            ) : (
+              <Empty description={t('noTimeline')} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            )}
+          </aside>
         </div>
       )}
 
@@ -290,6 +501,74 @@ export default function ContractFollowUpDetailPage() {
         onSave={handleInputFormSave}
         loading={updateDescMutation.isPending}
       />
+
+      {/* ========== END WORKER SERVICE MODAL ========== */}
+      <Modal
+        title={
+          <span>
+            <UserDeleteOutlined style={{ marginInlineEnd: 8 }} />
+            {t('endWorkerService')}
+            {card?.contractNumber != null && ` — #${card.contractNumber}`}
+          </span>
+        }
+        open={showEndServiceModal && canEndWorkerService}
+        onCancel={() => {
+          setShowEndServiceModal(false);
+          endServiceForm.resetFields();
+        }}
+        onOk={canEndWorkerService ? handleEndWorkerService : undefined}
+        okText={t('save')}
+        cancelText={t('cancel')}
+        confirmLoading={isEndingWorkerService}
+        okButtonProps={{ danger: true }}
+      >
+        <Form form={endServiceForm} layout="vertical">
+          <Form.Item name="reason" label={t('endServiceReason')}>
+            <Input.TextArea rows={3} placeholder={t('endServiceReasonPlaceholder')} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* ========== CANCEL CONTRACT MODAL ========== */}
+      <Modal
+        title={
+          <span>
+            <CloseCircleOutlined style={{ marginInlineEnd: 8 }} />
+            {t('cancelContract')}
+            {card?.contractNumber != null && ` — #${card.contractNumber}`}
+          </span>
+        }
+        open={showCancelModal && canCancelContract}
+        onCancel={() => {
+          setShowCancelModal(false);
+          cancelForm.resetFields();
+        }}
+        onOk={canCancelContract ? handleCancelContract : undefined}
+        okText={t('submit')}
+        cancelText={t('cancel')}
+        confirmLoading={isCancelling}
+        okButtonProps={{ danger: true }}
+      >
+        <Form form={cancelForm} layout="vertical">
+          <Form.Item
+            name="cancelBy"
+            label={t('cancelBy')}
+            rules={[{ required: true, message: t('required') }]}
+          >
+            <Select
+              placeholder={t('cancelBy')}
+              options={toSelectOptions([...CANCEL_BY], isRTL ? 'ar' : 'en')}
+            />
+          </Form.Item>
+          <Form.Item
+            name="cancelNote"
+            label={t('cancelNote')}
+            rules={[{ required: true, message: t('required') }]}
+          >
+            <Input.TextArea rows={3} placeholder={t('cancelNotePlaceholder')} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }
@@ -301,11 +580,15 @@ function PageHeader({
   router,
   refetch,
   isLoading,
+  actions,
 }: {
   t: (k: string) => string;
   router: ReturnType<typeof useRouter>;
   refetch: () => void;
   isLoading: boolean;
+  /** Contract lifecycle actions — rendered alongside Refresh, so the summary
+      card and the stages/timeline split below stay untouched. */
+  actions?: ReactNode;
 }) {
   return (
     <div className={styles.pageHeader}>
@@ -319,9 +602,12 @@ function PageHeader({
         </Button>
         <h1 className={styles.pageTitle}>{t('pageTitle')}</h1>
       </div>
-      <Button icon={<ReloadOutlined />} onClick={refetch} loading={isLoading}>
-        {t('refresh')}
-      </Button>
+      <div className={styles.headerActions}>
+        {actions}
+        <Button icon={<ReloadOutlined />} onClick={refetch} loading={isLoading}>
+          {t('refresh')}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -342,7 +628,10 @@ function SummaryItem({
       <span className={styles.summaryIcon}>{icon}</span>
       <div className={styles.summaryText}>
         <span className={styles.summaryLabel}>{label}</span>
-        <span className={styles.summaryValue}>{value ?? '—'}</span>
+        {/* §3.2: render a null/blank value as "—", never hide the field. */}
+        <span className={styles.summaryValue}>
+          {value === null || value === undefined || value === '' ? '—' : value}
+        </span>
       </div>
     </div>
   );
@@ -351,38 +640,127 @@ function SummaryItem({
 function SummaryHeader({
   t,
   isRTL,
-  contract,
-  customer,
-  customerNationalityLabel,
+  card,
   loading,
 }: {
   t: (k: string) => string;
   isRTL: boolean;
-  contract: { customerName?: string | null; customerNationalId?: string | null; workerName?: string | null; workerNationalityAr?: string | null; workerPassportNumber?: string | null; agentName?: string | null; contractNumber?: number | null; musanedContractNumber?: string | null } | undefined;
-  customer: { dateOfBirth?: string | null; birthDate?: string | null } | undefined;
-  customerNationalityLabel?: string | null;
+  card: FollowUpCard | undefined;
   loading: boolean;
 }) {
-  const dob = formatDate(customer?.dateOfBirth || customer?.birthDate, isRTL ? 'ar' : 'en');
+  const highlights = card?.highlights;
+  const header = card?.header;
+  const worker = card?.worker;
+  // `customer`/`agent` carry the same data as `highlights` (§3.5) — used as a
+  // fallback so a field still shows if only one of the two blocks is populated.
+  const customer = card?.customer;
+  const agent = card?.agent;
+  const lang = isRTL ? 'ar' : 'en';
+  const birthDate = highlights?.customerBirthDate ?? customer?.birthDate;
+  // Blank rather than formatDate's "-" placeholder, so SummaryItem renders "—".
+  const dob = birthDate ? formatDate(birthDate, lang) : null;
+  const lastUpdatedAt = card?.lastUpdatedAt ? formatDate(card.lastUpdatedAt, lang) : null;
+  const nationality = highlights?.customerNationality ?? customer?.nationality;
+  const nationalId = highlights?.customerNationalId ?? customer?.nationalId;
+  const workerNationality =
+    (isRTL ? highlights?.workerNationalityAr : highlights?.workerNationalityEn) ??
+    worker?.nationalityAr;
+  const workerPassport = highlights?.workerPassportNumber ?? worker?.passportNumber;
+  const agentName = header?.agentName || highlights?.agentName || agent?.nameAr;
+  const workerStatus = isRTL ? header?.workerStatusNameAr : header?.workerStatusNameEn ?? header?.workerStatusNameAr;
+  const statusName = (isRTL ? card?.statusNameAr : card?.statusNameEn ?? card?.statusNameAr) || null;
 
   return (
-    <Card className={styles.summaryCard} size="small" loading={loading && !contract}>
-      <div className={styles.summaryGrid}>
-        {contract?.contractNumber != null && (
-          <SummaryItem icon={<FileTextOutlined />} label={t('summaryContractNumber')} value={`#${contract.contractNumber}`} />
-        )}
-        {contract?.musanedContractNumber && (
-          <SummaryItem icon={<FileTextOutlined />} label={t('summaryMusanedNumber')} value={contract.musanedContractNumber} />
-        )}
-        <SummaryItem icon={<UserOutlined />} label={t('summaryCustomerName')} value={contract?.customerName} />
-        <SummaryItem icon={<CalendarOutlined />} label={t('summaryDob')} value={dob} />
-        <SummaryItem icon={<GlobalOutlined />} label={t('summaryClientNationality')} value={customerNationalityLabel} />
-        <SummaryItem icon={<IdcardOutlined />} label={t('summaryClientNationalId')} value={contract?.customerNationalId} />
-        <SummaryItem icon={<UserOutlined />} label={t('summaryWorkerName')} value={contract?.workerName} />
-        <SummaryItem icon={<GlobalOutlined />} label={t('summaryWorkerNationality')} value={contract?.workerNationalityAr} />
-        <SummaryItem icon={<IdcardOutlined />} label={t('summaryWorkerPassport')} value={contract?.workerPassportNumber} />
-        <SummaryItem icon={<SolutionOutlined />} label={t('summaryAgentName')} value={contract?.agentName} />
+    <Card className={styles.summaryCard} size="small" loading={loading}>
+      {/* Identity strip — contract number + the contract's own status, so the
+          detail screen states it without a trip back to the dashboard. */}
+      <div className={styles.summaryTopRow}>
+        <Avatar
+          size={56}
+          src={resolveImageUrl(worker?.photoUrl)}
+          icon={<UserOutlined />}
+          className={styles.summaryAvatar}
+        />
+        <div className={styles.summaryHeadline}>
+          <span className={styles.summaryContractNo}>#{card?.contractNumber ?? '—'}</span>
+          <span className={styles.summaryHeadlineSub}>{header?.customerName || '—'}</span>
+        </div>
+        <div className={styles.summaryTags}>
+          <Tag color={contractStatusColor(card?.statusId)} className={styles.summaryStatusTag}>
+            {statusName || '—'}
+          </Tag>
+          {worker?.isExternal && <Tag color="orange">{t('workerExternal')}</Tag>}
+        </div>
       </div>
+
+      <div className={styles.summaryGrid}>
+        <SummaryItem icon={<FileTextOutlined />} label={t('summaryContractNumber')} value={card?.contractNumber != null ? `#${card.contractNumber}` : '—'} />
+        <SummaryItem icon={<FileTextOutlined />} label={t('summaryMusanedNumber')} value={card?.musanedContractNumber} />
+        <SummaryItem icon={<FileProtectOutlined />} label={t('summaryContractStatus')} value={statusName} />
+        <SummaryItem icon={<UserOutlined />} label={t('summaryCustomerName')} value={header?.customerName} />
+        <SummaryItem icon={<CalendarOutlined />} label={t('summaryDob')} value={dob} />
+        <SummaryItem icon={<CalendarOutlined />} label={t('summaryDobHijri')} value={highlights?.customerBirthDateHijri} />
+        <SummaryItem icon={<GlobalOutlined />} label={t('summaryClientNationality')} value={nationality} />
+        <SummaryItem icon={<IdcardOutlined />} label={t('summaryClientNationalId')} value={nationalId} />
+        <SummaryItem icon={<PhoneOutlined />} label={t('summaryCustomerPhone')} value={header?.customerPhone} />
+        <SummaryItem icon={<MailOutlined />} label={t('summaryCustomerEmail')} value={header?.customerEmail} />
+        <SummaryItem icon={<EnvironmentOutlined />} label={t('summaryCustomerCity')} value={header?.customerCity} />
+        <SummaryItem icon={<SafetyCertificateOutlined />} label={t('summaryVisaNumber')} value={header?.visaNumber} />
+        <SummaryItem icon={<GlobalOutlined />} label={t('summaryWorkerNationality')} value={workerNationality} />
+        <SummaryItem icon={<IdcardOutlined />} label={t('summaryWorkerPassport')} value={workerPassport} />
+        <SummaryItem icon={<UserOutlined />} label={t('summaryWorkerStatus')} value={workerStatus} />
+        <SummaryItem icon={<CalendarOutlined />} label={t('summaryWorkerAge')} value={worker?.age} />
+        <SummaryItem icon={<HeartOutlined />} label={t('summaryWorkerReligion')} value={worker?.religionNameAr} />
+        <SummaryItem icon={<SolutionOutlined />} label={t('summaryAgentName')} value={agentName} />
+        <SummaryItem icon={<TagOutlined />} label={t('summaryContractCategory')} value={header?.contractCategoryName} />
+        <SummaryItem icon={<ClockCircleOutlined />} label={t('summaryCurrentStage')} value={card?.currentFollowUpStatusNameAr} />
+        <SummaryItem icon={<CalendarOutlined />} label={t('summaryDaysSinceCreation')} value={card?.daysSinceCreation} />
+        <SummaryItem icon={<HistoryOutlined />} label={t('summaryDaysSinceUpdate')} value={card?.daysSinceLastUpdate} />
+        <SummaryItem icon={<HistoryOutlined />} label={t('summaryLastUpdatedAt')} value={lastUpdatedAt} />
+      </div>
+    </Card>
+  );
+}
+
+// ── Offer figures — Frontend_AutomaticFollowUp_README.md §3.4 ─────────────────
+
+function OfferSummary({
+  t,
+  isRTL,
+  card,
+  loading,
+}: {
+  t: (k: string) => string;
+  isRTL: boolean;
+  card: FollowUpCard | undefined;
+  loading: boolean;
+}) {
+  const offer = card?.offer;
+  if (!loading && !offer) return null;
+  const fmt = (v: number | null | undefined) => formatCurrency(v, isRTL ? 'ar' : 'en');
+
+  return (
+    <Card
+      className={styles.summaryCard}
+      size="small"
+      loading={loading}
+      title={
+        <span>
+          <DollarOutlined style={{ marginInlineEnd: 8 }} />
+          {t('offerTitle')}
+        </span>
+      }
+    >
+      <Descriptions column={{ xs: 1, sm: 2, md: 4 }} size="small" bordered>
+        <Descriptions.Item label={t('offerAmount')}>{fmt(offer?.offerAmount)}</Descriptions.Item>
+        <Descriptions.Item label={t('otherCosts')}>{fmt(offer?.otherCosts)}</Descriptions.Item>
+        <Descriptions.Item label={t('offerSalary')}>{fmt(offer?.salary)}</Descriptions.Item>
+        <Descriptions.Item label={t('taxValue')}>{fmt(offer?.totalTaxValue)}</Descriptions.Item>
+        <Descriptions.Item label={t('offerTotalCost')}>{fmt(offer?.totalCost)}</Descriptions.Item>
+        <Descriptions.Item label={t('totalPaid')}>{fmt(offer?.totalPaid)}</Descriptions.Item>
+        <Descriptions.Item label={t('remainingAmount')}>{fmt(offer?.remainingAmount)}</Descriptions.Item>
+        <Descriptions.Item label={t('offerPaymentStatus')}>{offer?.paymentStatus || '—'}</Descriptions.Item>
+      </Descriptions>
     </Card>
   );
 }
@@ -417,19 +795,22 @@ function getInputDescriptionStatusLabel(item: MediationFollowUpItem): string | n
   return found?.labelAr ?? String(value);
 }
 
-// ── Sidebar stage row ──────────────────────────────────────────────────────
+// ── Stage chip — "أزرار" per Frontend_AutomaticFollowUp_README.md §3.7/§4 ─────
 
-function SidebarItem({
+function StageChip({
   item,
   idx,
   isRTL,
   isActive,
+  isCurrent,
   onClick,
 }: {
   item: MediationFollowUpItem;
   idx: number;
   isRTL: boolean;
   isActive: boolean;
+  /** Matches `currentFollowUpItemId` — flagged visually per §3.7. */
+  isCurrent: boolean;
   onClick: () => void;
 }) {
   const name = isRTL
@@ -440,11 +821,11 @@ function SidebarItem({
   return (
     <button
       type="button"
-      className={`${styles.sidebarItem} ${isActive ? styles.sidebarItemActive : ''} ${isSettled ? styles.sidebarItemSettled : ''}`}
+      className={`${styles.stageButton} ${isActive ? styles.stageButtonActive : ''} ${isSettled ? styles.stageButtonSettled : ''} ${isCurrent ? styles.stageButtonCurrent : ''}`}
       onClick={onClick}
     >
       <span className={styles.sidebarItemIndex}>{idx + 1}</span>
-      <span className={styles.sidebarItemName}>{name || '—'}</span>
+      <span>{name || '—'}</span>
       <span className={styles.sidebarItemDot} style={{ background: resultDotColor(item.result) }} />
     </button>
   );
@@ -547,6 +928,7 @@ function StageDetailPanel({
   idx,
   isRTL,
   t,
+  isCurrent,
   onFillForm,
   canManage,
 }: {
@@ -554,6 +936,8 @@ function StageDetailPanel({
   idx: number;
   isRTL: boolean;
   t: (k: string) => string;
+  /** Matches `currentFollowUpItemId` — flagged visually per §3.7. */
+  isCurrent: boolean;
   onFillForm: (item: MediationFollowUpItem) => void;
   canManage: boolean;
 }) {
@@ -572,6 +956,7 @@ function StageDetailPanel({
         <div className={styles.mainDetailHeaderLeft}>
           <span className={styles.mainDetailIndex}>{idx + 1}</span>
           <h2 className={styles.mainDetailTitle}>{name || '—'}</h2>
+          {isCurrent && <Tag color="blue">{t('summaryCurrentStage')}</Tag>}
         </div>
         {inputStatusLabel ? <Tag color="blue">{inputStatusLabel}</Tag> : resultTag(item.result, t)}
       </div>
@@ -601,7 +986,7 @@ function StageDetailPanel({
         {item.completedAt && (
           <span className={styles.metaItem}>
             <span className={styles.metaLabel}>{t('completedAt')}:</span>{' '}
-            {new Date(item.completedAt).toLocaleDateString()}
+            {formatDate(item.completedAt, isRTL ? 'ar' : 'en')}
           </span>
         )}
       </div>
