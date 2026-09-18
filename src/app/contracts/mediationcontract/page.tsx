@@ -28,7 +28,6 @@ import {
   SearchOutlined,
   PlusOutlined,
   UserOutlined,
-  CalendarOutlined,
   DollarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -48,15 +47,13 @@ import {
   UserDeleteOutlined,
   UserAddOutlined,
   IdcardOutlined,
+  GlobalOutlined,
+  SolutionOutlined,
 } from '@ant-design/icons';
 
 import { useAuthStore } from '@/store/authStore';
 import { useContractActionGates } from '@/hooks/useActionPermissionGates';
-import {
-  DateRangeFilter,
-  ExportButton,
-  AdvancedFilterPanel,
-} from '@/components/filters';
+import { DateRangeFilter, ExportButton, AdvancedFilterPanel } from '@/components/filters';
 import { API_ENDPOINTS } from '@/config/api.config';
 import { useCustomers } from '@/hooks/api/useCustomers';
 import { useAvailableMediationWorkers } from '@/hooks/api/useWorkers';
@@ -118,7 +115,8 @@ export default function MediationContractsPage() {
   const [externalStatusFilter, setExternalStatusFilter] = useState<string>('all');
   const [manualStatusFilter, setManualStatusFilter] = useState<string>('all');
   const [visaStatusFilter, setVisaStatusFilter] = useState<number | null>(null);
-  const [incompleteExternalStatusFilter, setIncompleteExternalStatusFilter] = useState<string>('all');
+  const [incompleteExternalStatusFilter, setIncompleteExternalStatusFilter] =
+    useState<string>('all');
   const [pastExternalStatusFilter, setPastExternalStatusFilter] = useState<string>('all');
   const [warrantyStatusFilter, setWarrantyStatusFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -126,8 +124,9 @@ export default function MediationContractsPage() {
   const [nationalityFilter, setNationalityFilter] = useState<string | 'all'>('all');
   const [jobFilter, setJobFilter] = useState<string | 'all'>('all');
   const [createdByFilter, setCreatedByFilter] = useState<string | 'all'>('all');
-  const [workerAssignmentFilter, setWorkerAssignmentFilter] =
-    useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [workerAssignmentFilter, setWorkerAssignmentFilter] = useState<
+    'all' | 'assigned' | 'unassigned'
+  >('all');
   const [insuranceFilter, setInsuranceFilter] = useState<'all' | 'insured' | 'uninsured'>('all');
   const [replacementFilter, setReplacementFilter] = useState<BooleanFilter>('all');
   const [musanedPaymentStatusFilter, setMusanedPaymentStatusFilter] = useState<string>('all');
@@ -140,25 +139,21 @@ export default function MediationContractsPage() {
     undefined,
     undefined,
   ]);
-  const [cancellationDateRange, setCancellationDateRange] = useState<[string | undefined, string | undefined]>([
-    undefined,
-    undefined,
-  ]);
-  const [arrivalDateRange, setArrivalDateRange] = useState<[string | undefined, string | undefined]>([
-    undefined,
-    undefined,
-  ]);
-  const [invoicePaymentDateRange, setInvoicePaymentDateRange] = useState<[string | undefined, string | undefined]>([
-    undefined,
-    undefined,
-  ]);
+  const [cancellationDateRange, setCancellationDateRange] = useState<
+    [string | undefined, string | undefined]
+  >([undefined, undefined]);
+  const [arrivalDateRange, setArrivalDateRange] = useState<
+    [string | undefined, string | undefined]
+  >([undefined, undefined]);
+  const [invoicePaymentDateRange, setInvoicePaymentDateRange] = useState<
+    [string | undefined, string | undefined]
+  >([undefined, undefined]);
   // Distinct from invoicePaymentDateRange (Musaned invoice payment date) —
   // BACKEND_REVIEW_README.md #7 lists PaymentDateFrom/PaymentDateTo as a
   // separate filter on the contract's own payment record dates.
-  const [paymentDateRange, setPaymentDateRange] = useState<[string | undefined, string | undefined]>([
-    undefined,
-    undefined,
-  ]);
+  const [paymentDateRange, setPaymentDateRange] = useState<
+    [string | undefined, string | undefined]
+  >([undefined, undefined]);
   const [visaDateRange, setVisaDateRange] = useState<[string | undefined, string | undefined]>([
     undefined,
     undefined,
@@ -333,7 +328,8 @@ export default function MediationContractsPage() {
     visaStatus: visaStatusFilter ?? undefined,
     incompleteExternalStatusId:
       incompleteExternalStatusFilter === 'all' ? undefined : Number(incompleteExternalStatusFilter),
-    pastExternalStatusId: pastExternalStatusFilter === 'all' ? undefined : Number(pastExternalStatusFilter),
+    pastExternalStatusId:
+      pastExternalStatusFilter === 'all' ? undefined : Number(pastExternalStatusFilter),
     warrantyStatus: warrantyStatusFilter === 'all' ? undefined : Number(warrantyStatusFilter),
     statusId: statusFilter === 'all' ? undefined : Number(statusFilter),
     contractType: typeFilter === 'all' ? undefined : Number(typeFilter),
@@ -355,10 +351,13 @@ export default function MediationContractsPage() {
     isUnpaid: paymentFilter === 'unpaid' ? true : undefined,
     isReplacement: replacementFilter === 'all' ? undefined : replacementFilter === 'true',
     musanedPaymentStatus:
-      musanedPaymentStatusFilter === 'all' ? undefined : Number(musanedPaymentStatusFilter) as 0 | 1 | 2,
+      musanedPaymentStatusFilter === 'all'
+        ? undefined
+        : (Number(musanedPaymentStatusFilter) as 0 | 1 | 2),
     referenceNumber: referenceNumberFilter || undefined,
-    workersAddedToday: workersAddedTodayFilter === 'all' ? undefined : workersAddedTodayFilter === 'true',
-    religion: religionFilter === 'all' ? undefined : Number(religionFilter) as 1 | 2 | 3,
+    workersAddedToday:
+      workersAddedTodayFilter === 'all' ? undefined : workersAddedTodayFilter === 'true',
+    religion: religionFilter === 'all' ? undefined : (Number(religionFilter) as 1 | 2 | 3),
     hasPreviousExperience:
       previousExperienceFilter === 'all' ? undefined : previousExperienceFilter === 'true',
     isVip: vipFilter === 'all' ? undefined : vipFilter === 'true',
@@ -368,8 +367,7 @@ export default function MediationContractsPage() {
     paymentDateTo: paymentDateRange[1],
     visaDateFrom: visaDateRange[0],
     visaDateTo: visaDateRange[1],
-    hasContractInsurance:
-      insuranceFilter === 'all' ? undefined : insuranceFilter === 'insured',
+    hasContractInsurance: insuranceFilter === 'all' ? undefined : insuranceFilter === 'insured',
   });
 
   const { mutateAsync: createComplaint, isPending: isCreatingComplaint } = useCreateComplaint();
@@ -432,9 +430,13 @@ export default function MediationContractsPage() {
     costDiscount: language === 'ar' ? 'خصم التكلفة' : 'Cost Discount',
     insuranceCost: language === 'ar' ? 'تكلفة التأمين' : 'Insurance Cost',
     // Lifecycle
-    signContract: language === 'ar' ? 'توقيع العقد (Draft → موقّع)' : 'Sign Contract (Draft → Signed)',
+    signContract:
+      language === 'ar' ? 'توقيع العقد (Draft → موقّع)' : 'Sign Contract (Draft → Signed)',
     generateDelivery: language === 'ar' ? 'نموذج الاستلام والتسليم' : 'Generate Delivery Form',
-    confirmDelivery: language === 'ar' ? 'تأكيد استلام العميل (→ مُسلَّم)' : 'Confirm Customer Receipt (→ Delivered)',
+    confirmDelivery:
+      language === 'ar'
+        ? 'تأكيد استلام العميل (→ مُسلَّم)'
+        : 'Confirm Customer Receipt (→ Delivered)',
     warrantyReturn: language === 'ar' ? 'إرجاع ضمن فترة الضمان' : 'Warranty Return',
     updateStatus: language === 'ar' ? 'تحديث الحالة يدوياً' : 'Update Status Manually',
     statusHistory: language === 'ar' ? 'سجل الحالات' : 'Status History',
@@ -491,6 +493,16 @@ export default function MediationContractsPage() {
     paymentDateLabel: language === 'ar' ? 'تاريخ الدفعة' : 'Payment Date',
     partiallyPaid: language === 'ar' ? 'مدفوع جزئياً' : 'Partially Paid',
     visaDateLabel: language === 'ar' ? 'تاريخ التأشيرة' : 'Visa Date',
+    contractOverview: language === 'ar' ? 'ملخص العقد' : 'Contract overview',
+    contractInformation: language === 'ar' ? 'بيانات العقد' : 'Contract details',
+    financialSummary: language === 'ar' ? 'الملخص المالي' : 'Financial summary',
+    worker: language === 'ar' ? 'العامل' : 'Worker',
+    workerNationality: language === 'ar' ? 'جنسية العامل' : 'Worker nationality',
+    agent: language === 'ar' ? 'الوكيل' : 'Agent',
+    job: language === 'ar' ? 'المهنة' : 'Job',
+    createdAt: language === 'ar' ? 'تاريخ الإنشاء' : 'Created on',
+    currentAction: language === 'ar' ? 'الإجراء التالي' : 'Next action',
+    noWorker: language === 'ar' ? 'لم يتم إسناد عامل' : 'No worker assigned',
   };
 
   // Helper functions — formatCurrency/formatDate/getStatusConfigFromName live in
@@ -503,14 +515,44 @@ export default function MediationContractsPage() {
   // 13=Delivered, 16=Returned, 17=Cancelled.
   const getStatusConfig = (statusId: number | null | undefined) => {
     const configs: Record<number, { color: string; label: string; icon: React.ReactNode }> = {
-      1: { color: 'processing', label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 1, language), icon: <ClockCircleOutlined /> },
-      2: { color: 'success', label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 2, language), icon: <CheckCircleOutlined /> },
-      11: { color: 'warning', label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 11, language), icon: <ClockCircleOutlined /> },
-      13: { color: 'success', label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 13, language), icon: <CheckCircleOutlined /> },
-      16: { color: 'warning', label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 16, language), icon: <ExclamationCircleOutlined /> },
-      17: { color: 'error', label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 17, language), icon: <CloseCircleOutlined /> },
+      1: {
+        color: 'processing',
+        label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 1, language),
+        icon: <ClockCircleOutlined />,
+      },
+      2: {
+        color: 'success',
+        label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 2, language),
+        icon: <CheckCircleOutlined />,
+      },
+      11: {
+        color: 'warning',
+        label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 11, language),
+        icon: <ClockCircleOutlined />,
+      },
+      13: {
+        color: 'success',
+        label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 13, language),
+        icon: <CheckCircleOutlined />,
+      },
+      16: {
+        color: 'warning',
+        label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 16, language),
+        icon: <ExclamationCircleOutlined />,
+      },
+      17: {
+        color: 'error',
+        label: getEnumLabel([...MEDIATION_CONTRACT_STATUS], 17, language),
+        icon: <CloseCircleOutlined />,
+      },
     };
-    return configs[statusId ?? 0] || { color: 'default', label: language === 'ar' ? 'غير محدد' : 'Unknown', icon: <ClockCircleOutlined /> };
+    return (
+      configs[statusId ?? 0] || {
+        color: 'default',
+        label: language === 'ar' ? 'غير محدد' : 'Unknown',
+        icon: <ClockCircleOutlined />,
+      }
+    );
   };
 
   // The API returns only `contractTypeName` (string), never a numeric code, so
@@ -518,8 +560,12 @@ export default function MediationContractsPage() {
   const getTypeTag = (typeName: string | null | undefined) => {
     const name = (typeName || '').toLowerCase();
     if (name === 'new') return { color: 'blue', label: language === 'ar' ? 'جديد' : 'New' };
-    if (name === 'transfer') return { color: 'green', label: language === 'ar' ? 'نقل خدمات' : 'Transfer' };
-    return { color: 'default', label: typeName && typeName !== '0' ? typeName : (language === 'ar' ? 'غير محدد' : 'Unknown') };
+    if (name === 'transfer')
+      return { color: 'green', label: language === 'ar' ? 'نقل خدمات' : 'Transfer' };
+    return {
+      color: 'default',
+      label: typeName && typeName !== '0' ? typeName : language === 'ar' ? 'غير محدد' : 'Unknown',
+    };
   };
 
   // Status is filtered server-side (via StatusId on the query). Search + type
@@ -540,8 +586,7 @@ export default function MediationContractsPage() {
         (contract.customerName || '').toLowerCase().includes(searchLower) ||
         (contract.customerNameAr || '').includes(searchText);
       const matchesType =
-        typeFilter === 'all' ||
-        (contract.contractTypeName || '').toLowerCase() === typeLabelEn;
+        typeFilter === 'all' || (contract.contractTypeName || '').toLowerCase() === typeLabelEn;
       return matchesSearch && matchesType;
     });
   }, [contracts, searchText, typeFilter]);
@@ -552,7 +597,8 @@ export default function MediationContractsPage() {
     const nameOf = (c: MediationContract) => (c.statusName || '').toLowerCase();
     return {
       total: serverTotal,
-      active: all.filter((c) => ['signed', 'deliveryformissued', 'delivered'].includes(nameOf(c))).length,
+      active: all.filter((c) => ['signed', 'deliveryformissued', 'delivered'].includes(nameOf(c)))
+        .length,
       pending: all.filter((c) => nameOf(c) === 'draft').length,
       revenue: all.reduce((sum, c) => sum + (c.totalCost || 0), 0),
     };
@@ -643,7 +689,9 @@ export default function MediationContractsPage() {
       const values = await warrantyReturnForm.validateFields();
       const data: WarrantyReturnDto = {
         contractId: selectedContract!.id,
-        returnDate: values.returnDate ? new Date(values.returnDate).toISOString() : new Date().toISOString(),
+        returnDate: values.returnDate
+          ? new Date(values.returnDate).toISOString()
+          : new Date().toISOString(),
         returnReason: Number(values.returnReason),
         daysWithCustomer: Number(values.daysWithCustomer),
         newWorkerLocation: values.newWorkerLocation || null,
@@ -722,7 +770,9 @@ export default function MediationContractsPage() {
     if (!canUpdateContract) return;
     try {
       const values = await assignWorkerForm.validateFields();
-      const passportNumber = String(values.workerPassportNumber || assignPassportSearch || '').trim();
+      const passportNumber = String(
+        values.workerPassportNumber || assignPassportSearch || ''
+      ).trim();
       const worker = (assignWorkers as Worker[]).find(
         (w) => String(w.id) === String(values.workerId)
       );
@@ -762,8 +812,19 @@ export default function MediationContractsPage() {
     const typeTag = getTypeTag(contract.contractTypeName ?? null);
     const customerDisplay =
       language === 'ar'
-        ? contract.customerNameAr || contract.customerName || `${t.customer} #${contract.customerId}`
-        : contract.customerName || contract.customerNameAr || `${t.customer} #${contract.customerId}`;
+        ? contract.customerNameAr ||
+          contract.customerName ||
+          `${t.customer} #${contract.customerId}`
+        : contract.customerName ||
+          contract.customerNameAr ||
+          `${t.customer} #${contract.customerId}`;
+    const workerDisplay = contract.workerName || contract.worker?.name || t.noWorker;
+    const workerPassport =
+      contract.workerPassportNumber ||
+      contract.pendingWorkerPassportNumber ||
+      contract.worker?.passportNumber;
+    const workerNationality =
+      contract.workerNationalityAr || contract.nationalityNameAr || contract.nationalityName;
 
     // ── Status-aware actions ──────────────────────────────────────────────
     // Only the lifecycle action valid for the current status is offered as the
@@ -776,9 +837,12 @@ export default function MediationContractsPage() {
       fn();
     };
 
-    let primaryAction:
-      | { label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean }
-      | null = null;
+    let primaryAction: {
+      label: string;
+      icon: React.ReactNode;
+      onClick: () => void;
+      danger?: boolean;
+    } | null = null;
     if (statusKey === 'draft' && canApproveContract) {
       primaryAction = {
         label: t.actionSign,
@@ -845,9 +909,7 @@ export default function MediationContractsPage() {
     }
 
     if (!isTerminal && (canUpdateContract || canDeleteContract)) {
-      moreItems.push(
-        { type: 'divider' as const }
-      );
+      moreItems.push({ type: 'divider' as const });
       if (canUpdateContract) {
         const hasActiveWorker =
           contract.hasAssignedWorker === true ||
@@ -898,102 +960,147 @@ export default function MediationContractsPage() {
       <Col xs={24} key={contract.id}>
         <Card className={styles.contractCard} hoverable>
           <div className={styles.cardContent}>
-            {/* Left Section */}
-            <div className={styles.cardLeft}>
-              <div className={styles.cardHeader}>
-                <div className={styles.contractNumber}>
-                  <FileTextOutlined className={styles.contractIcon} />
-                  <span>#{contract.contractNumber ?? contract.id}</span>
-                  {contract.musanedContractNumber && (
-                    <Tag color="geekblue" style={{ marginInlineStart: 8 }}>
-                      {t.musanedNumber}: {contract.musanedContractNumber}
-                    </Tag>
-                  )}
-                </div>
+            {/* Same information hierarchy as Automatic Follow Up: state at the
+                side, contract/customer facts in the centre, identity opposite. */}
+            <aside className={styles.statusPanel}>
+              <div className={styles.panelHeading}>
+                <FileProtectOutlined />
+                <span>{t.status}</span>
               </div>
-
-              <div className={styles.tagsSection}>
-                <Tag color={typeTag.color} className={styles.typeTag}>
-                  {typeTag.label}
-                </Tag>
+              <div className={styles.statusHero}>
                 <Badge
-                  status={statusConfig.color as 'processing' | 'warning' | 'success' | 'error' | 'default'}
+                  status={
+                    statusConfig.color as 'processing' | 'warning' | 'success' | 'error' | 'default'
+                  }
                   text={statusConfig.label}
                 />
-                {(contract.branchNameAr || contract.branchNameEn || contract.branchName) && (
-                  <Tag icon={<EnvironmentOutlined />} color="blue">
-                    {(language === 'ar' ? contract.branchNameAr : contract.branchNameEn) ||
-                      contract.branchName}
-                  </Tag>
-                )}
-                {contract.paymentStatusCode != null && (
-                  <Tag
-                    color={
-                      contract.paymentStatusCode === 2
-                        ? 'green'
-                        : contract.paymentStatusCode === 1
-                        ? 'orange'
-                        : 'default'
-                    }
-                  >
-                    {contract.paymentStatusCode === 2
-                      ? t.paid
-                      : contract.paymentStatusCode === 1
-                      ? t.partiallyPaid
-                      : t.unpaid}
-                  </Tag>
+              </div>
+              <div className={styles.statusFacts}>
+                <div>
+                  <span>{t.paymentStatus}</span>
+                  <strong>{contract.paymentStatus || t.unpaid}</strong>
+                </div>
+                <div>
+                  <span>{t.createdAt}</span>
+                  <strong>{fmtDate(contract.createdAt)}</strong>
+                </div>
+                <div>
+                  <span>{t.visaDateLabel}</span>
+                  <strong>{fmtDate(contract.visaDate)}</strong>
+                </div>
+                {primaryAction && (
+                  <div>
+                    <span>{t.currentAction}</span>
+                    <strong>{primaryAction.label}</strong>
+                  </div>
                 )}
               </div>
+            </aside>
 
+            <main className={styles.contractDetailsPanel}>
+              <div className={styles.panelHeading}>
+                <FileTextOutlined />
+                <span>{t.contractInformation}</span>
+              </div>
               <div className={styles.customerSection}>
-                <Avatar size={44} icon={<UserOutlined />} className={styles.customerAvatar} />
+                <Avatar size={46} icon={<UserOutlined />} className={styles.customerAvatar} />
                 <div className={styles.customerDetails}>
                   <span className={styles.customerName}>{customerDisplay}</span>
-                  {contract.customerPhone && (
-                    <div className={styles.customerMeta}>
-                      <PhoneOutlined />
-                      <span dir="ltr">{contract.customerPhone}</span>
-                    </div>
-                  )}
+                  <span className={styles.customerMeta} dir="ltr">
+                    <PhoneOutlined /> {contract.customerPhone || '—'}
+                  </span>
                 </div>
               </div>
-
               <div className={styles.detailsSection}>
-                {contract.visaNumber && (
-                  <div className={styles.detailItem}>
-                    <FileTextOutlined className={styles.detailIcon} />
-                    <div className={styles.detailText}>
-                      <span className={styles.detailLabel}>{t.visaNumber}</span>
-                      <span className={styles.detailValue}>{contract.visaNumber}</span>
-                    </div>
+                <div className={styles.detailItem}>
+                  <UserOutlined className={styles.detailIcon} />
+                  <div className={styles.detailText}>
+                    <span className={styles.detailLabel}>{t.worker}</span>
+                    <span className={styles.detailValue}>{workerDisplay}</span>
                   </div>
-                )}
-                {contract.arrivalDestinationId && (
-                  <div className={styles.detailItem}>
-                    <EnvironmentOutlined className={styles.detailIcon} />
-                    <div className={styles.detailText}>
-                      <span className={styles.detailLabel}>{t.arrivalCity}</span>
-                      <span className={styles.detailValue}>
-                        {getEnumLabel([...ARRIVAL_DESTINATIONS], contract.arrivalDestinationId, language)}
-                      </span>
-                    </div>
+                </div>
+                <div className={styles.detailItem}>
+                  <IdcardOutlined className={styles.detailIcon} />
+                  <div className={styles.detailText}>
+                    <span className={styles.detailLabel}>{t.workerPassportNumber}</span>
+                    <span className={styles.detailValue} dir="ltr">
+                      {workerPassport || '—'}
+                    </span>
                   </div>
-                )}
-                {contract.createdByName && (
-                  <div className={styles.detailItem}>
-                    <UserOutlined className={styles.detailIcon} />
-                    <div className={styles.detailText}>
-                      <span className={styles.detailLabel}>{t.createdBy}</span>
-                      <span className={styles.detailValue}>{contract.createdByName}</span>
-                    </div>
+                </div>
+                <div className={styles.detailItem}>
+                  <GlobalOutlined className={styles.detailIcon} />
+                  <div className={styles.detailText}>
+                    <span className={styles.detailLabel}>{t.workerNationality}</span>
+                    <span className={styles.detailValue}>{workerNationality || '—'}</span>
                   </div>
+                </div>
+                <div className={styles.detailItem}>
+                  <SolutionOutlined className={styles.detailIcon} />
+                  <div className={styles.detailText}>
+                    <span className={styles.detailLabel}>{t.agent}</span>
+                    <span className={styles.detailValue}>{contract.agentName || '—'}</span>
+                  </div>
+                </div>
+                <div className={styles.detailItem}>
+                  <FileTextOutlined className={styles.detailIcon} />
+                  <div className={styles.detailText}>
+                    <span className={styles.detailLabel}>{t.visaNumber}</span>
+                    <span className={styles.detailValue} dir="ltr">
+                      {contract.visaNumber || '—'}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.detailItem}>
+                  <EnvironmentOutlined className={styles.detailIcon} />
+                  <div className={styles.detailText}>
+                    <span className={styles.detailLabel}>{t.arrivalCity}</span>
+                    <span className={styles.detailValue}>
+                      {contract.arrivalDestinationId
+                        ? getEnumLabel(
+                            [...ARRIVAL_DESTINATIONS],
+                            contract.arrivalDestinationId,
+                            language
+                          )
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.financialSummary}>
+                <div>
+                  <span>{t.offerAmount}</span>
+                  <strong>{fmtCurrency(contract.offerAmount)}</strong>
+                </div>
+                <div>
+                  <span>{t.salary}</span>
+                  <strong>{fmtCurrency(contract.salary)}</strong>
+                </div>
+                <div>
+                  <span>{t.totalPaid}</span>
+                  <strong>{fmtCurrency(contract.totalPaid)}</strong>
+                </div>
+                <div>
+                  <span>{t.remainingAmount}</span>
+                  <strong>{fmtCurrency(contract.remainingAmount)}</strong>
+                </div>
+              </div>
+            </main>
+
+            <aside className={styles.identityPanel}>
+              <div className={styles.panelHeading}>
+                <FileTextOutlined />
+                <span>{t.contractOverview}</span>
+              </div>
+              <div className={styles.identityNumber}>#{contract.contractNumber ?? contract.id}</div>
+              <div className={styles.identityTags}>
+                <Tag color={typeTag.color}>{typeTag.label}</Tag>
+                {contract.musanedContractNumber && (
+                  <Tag color="geekblue">
+                    <span dir="ltr">{contract.musanedContractNumber}</span>
+                  </Tag>
                 )}
               </div>
-            </div>
-
-            {/* Right Section — Cost Panel */}
-            <div className={styles.cardRight}>
-              {/* Total Cost Banner */}
               <div className={styles.totalCostBanner}>
                 <div className={styles.totalCostMeta}>
                   <DollarOutlined className={styles.totalCostIcon} />
@@ -1001,70 +1108,21 @@ export default function MediationContractsPage() {
                 </div>
                 <div className={styles.totalCostAmount}>{fmtCurrency(contract.totalCost)}</div>
               </div>
-
-              {/* Cost Breakdown */}
-              <div className={styles.costBreakdown}>
-                <div className={styles.costRow}>
-                  <span className={styles.costDot} style={{ background: '#003366' }} />
-                  <span className={styles.costLabel}>{t.offerAmount}</span>
-                  <span className={styles.costValue} style={{ color: '#003366' }}>
-                    {fmtCurrency(contract.offerAmount)}
-                  </span>
+              <div className={styles.identityDetails}>
+                <div>
+                  <span>{t.job}</span>
+                  <strong>{contract.jobNameAr || contract.jobName || '—'}</strong>
                 </div>
-                <div className={styles.costRow}>
-                  <span className={styles.costDot} style={{ background: '#1890ff' }} />
-                  <span className={styles.costLabel}>{t.salary}</span>
-                  <span className={styles.costValue} style={{ color: '#1890ff' }}>
-                    {fmtCurrency(contract.salary)}
-                  </span>
+                <div>
+                  <span>{t.createdBy}</span>
+                  <strong>{contract.createdByName || '—'}</strong>
                 </div>
-                <div className={styles.costRow}>
-                  <span className={styles.costDot} style={{ background: '#faad14' }} />
-                  <span className={styles.costLabel}>{t.taxValue}</span>
-                  <span className={styles.costValue} style={{ color: '#faad14' }}>
-                    {fmtCurrency(contract.totalTaxValue)}
-                  </span>
-                </div>
-                <div className={styles.costRow}>
-                  <span className={styles.costDot} style={{ background: '#722ed1' }} />
-                  <span className={styles.costLabel}>{t.otherCosts}</span>
-                  <span className={styles.costValue} style={{ color: '#722ed1' }}>
-                    {fmtCurrency(contract.otherCosts)}
-                  </span>
-                </div>
-                <div className={styles.costRow}>
-                  <span className={styles.costDot} style={{ background: '#52c41a' }} />
-                  <span className={styles.costLabel}>{t.totalPaid}</span>
-                  <span className={styles.costValue} style={{ color: '#52c41a' }}>
-                    {fmtCurrency(contract.totalPaid)}
-                  </span>
-                </div>
-                <div className={styles.costRow}>
-                  <span className={styles.costDot} style={{ background: '#ff4d4f' }} />
-                  <span className={styles.costLabel}>{t.remainingAmount}</span>
-                  <span className={styles.costValue} style={{ color: '#ff4d4f' }}>
-                    {fmtCurrency(contract.remainingAmount)}
-                  </span>
+                <div>
+                  <span>{t.arrivalCity}</span>
+                  <strong>{contract.arrivalDestinationName || '—'}</strong>
                 </div>
               </div>
-
-              {/* Date Range */}
-              <div className={styles.datesSection}>
-                <div className={styles.dateItem}>
-                  <CalendarOutlined />
-                  <span>{fmtDate(contract.createdAt)}</span>
-                </div>
-                {contract.visaDate && (
-                  <>
-                    <span className={styles.dateSeparator}>{'→'}</span>
-                    <div className={styles.dateItem}>
-                      <CalendarOutlined />
-                      <span>{fmtDate(contract.visaDate)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            </aside>
           </div>
 
           {/* Status-aware actions: Details + valid lifecycle action + More menu */}
@@ -1102,7 +1160,14 @@ export default function MediationContractsPage() {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '60vh',
+        }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -1121,7 +1186,11 @@ export default function MediationContractsPage() {
             </div>
           </div>
           <div className={styles.headerActions}>
-            <Button icon={<ReloadOutlined />} className={styles.secondaryBtn} onClick={() => refetch()}>
+            <Button
+              icon={<ReloadOutlined />}
+              className={styles.secondaryBtn}
+              onClick={() => refetch()}
+            >
               {t.refresh}
             </Button>
             {canCreateContract && (
@@ -1131,7 +1200,9 @@ export default function MediationContractsPage() {
                 className={styles.primaryBtn}
                 onClick={() => {
                   if (prefilledCustomerId) {
-                    router.push(`/contracts/mediationcontract/add?customerId=${prefilledCustomerId}`);
+                    router.push(
+                      `/contracts/mediationcontract/add?customerId=${prefilledCustomerId}`
+                    );
                   } else {
                     setCustomerSelectId(null);
                     setShowCustomerSelectModal(true);
@@ -1149,17 +1220,32 @@ export default function MediationContractsPage() {
       <Row gutter={[16, 16]} className={styles.statisticsRow}>
         <Col xs={12} sm={6}>
           <Card className={styles.statCard}>
-            <Statistic title={t.totalContracts} value={stats.total} prefix={<FileTextOutlined style={{ color: '#003366' }} />} valueStyle={{ color: '#003366' }} />
+            <Statistic
+              title={t.totalContracts}
+              value={stats.total}
+              prefix={<FileTextOutlined style={{ color: '#003366' }} />}
+              valueStyle={{ color: '#003366' }}
+            />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card className={styles.statCard}>
-            <Statistic title={t.activeContracts} value={stats.active} prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} valueStyle={{ color: '#52c41a' }} />
+            <Statistic
+              title={t.activeContracts}
+              value={stats.active}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              valueStyle={{ color: '#52c41a' }}
+            />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card className={styles.statCard}>
-            <Statistic title={t.pendingContracts} value={stats.pending} prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />} valueStyle={{ color: '#faad14' }} />
+            <Statistic
+              title={t.pendingContracts}
+              value={stats.pending}
+              prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
+              valueStyle={{ color: '#faad14' }}
+            />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
@@ -1185,7 +1271,10 @@ export default function MediationContractsPage() {
             placeholder={t.search}
             prefix={<SearchOutlined />}
             value={searchText}
-            onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              setCurrentPage(1);
+            }}
             allowClear
             style={{ width: 300 }}
           />
@@ -1205,14 +1294,19 @@ export default function MediationContractsPage() {
               WorkerNumber: workerNumberFilter || undefined,
               CustomerPhone: customerPhoneFilter || undefined,
               VisaNumber: visaNumberFilter || undefined,
-              ExternalStatusId: externalStatusFilter === 'all' ? undefined : Number(externalStatusFilter),
-              ManualContractStatus: manualStatusFilter === 'all' ? undefined : Number(manualStatusFilter),
+              ExternalStatusId:
+                externalStatusFilter === 'all' ? undefined : Number(externalStatusFilter),
+              ManualContractStatus:
+                manualStatusFilter === 'all' ? undefined : Number(manualStatusFilter),
               VisaStatus: visaStatusFilter ?? undefined,
               IncompleteExternalStatusId:
-                incompleteExternalStatusFilter === 'all' ? undefined : Number(incompleteExternalStatusFilter),
+                incompleteExternalStatusFilter === 'all'
+                  ? undefined
+                  : Number(incompleteExternalStatusFilter),
               PastExternalStatusId:
                 pastExternalStatusFilter === 'all' ? undefined : Number(pastExternalStatusFilter),
-              WarrantyStatus: warrantyStatusFilter === 'all' ? undefined : Number(warrantyStatusFilter),
+              WarrantyStatus:
+                warrantyStatusFilter === 'all' ? undefined : Number(warrantyStatusFilter),
               StatusId: statusFilter === 'all' ? undefined : Number(statusFilter),
               ContractType: typeFilter === 'all' ? undefined : Number(typeFilter),
               NationalityId: nationalityFilter === 'all' ? undefined : nationalityFilter,
@@ -1228,18 +1322,24 @@ export default function MediationContractsPage() {
               AgentId: agentFilter === 'all' ? undefined : agentFilter,
               MarketerId: marketerFilter === 'all' ? undefined : marketerFilter,
               WithoutAssignedWorker:
-                workerAssignmentFilter === 'all' ? undefined : workerAssignmentFilter === 'unassigned',
+                workerAssignmentFilter === 'all'
+                  ? undefined
+                  : workerAssignmentFilter === 'unassigned',
               IsPaid: paymentFilter === 'paid' ? true : undefined,
               IsUnpaid: paymentFilter === 'unpaid' ? true : undefined,
               IsReplacement: replacementFilter === 'all' ? undefined : replacementFilter === 'true',
               MusanedPaymentStatus:
-                musanedPaymentStatusFilter === 'all' ? undefined : Number(musanedPaymentStatusFilter),
+                musanedPaymentStatusFilter === 'all'
+                  ? undefined
+                  : Number(musanedPaymentStatusFilter),
               ReferenceNumber: referenceNumberFilter || undefined,
               WorkersAddedToday:
                 workersAddedTodayFilter === 'all' ? undefined : workersAddedTodayFilter === 'true',
               Religion: religionFilter === 'all' ? undefined : Number(religionFilter),
               HasPreviousExperience:
-                previousExperienceFilter === 'all' ? undefined : previousExperienceFilter === 'true',
+                previousExperienceFilter === 'all'
+                  ? undefined
+                  : previousExperienceFilter === 'true',
               IsVip: vipFilter === 'all' ? undefined : vipFilter === 'true',
               InvoicePaymentDateFrom: invoicePaymentDateRange[0],
               InvoicePaymentDateTo: invoicePaymentDateRange[1],
@@ -1258,11 +1358,16 @@ export default function MediationContractsPage() {
         <div className={styles.filterContent}>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'رقم العقد' : 'Contract Number'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'رقم العقد' : 'Contract Number'}
+              </label>
               <InputNumber
                 min={0}
                 value={contractNumberFilter}
-                onChange={(value) => { setContractNumberFilter(value ?? null); setCurrentPage(1); }}
+                onChange={(value) => {
+                  setContractNumberFilter(value ?? null);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
@@ -1271,61 +1376,94 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.musanedNumber}</label>
               <Input
                 value={musanedNumberFilter}
-                onChange={(e) => { setMusanedNumberFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setMusanedNumberFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'اسم العميل' : 'Client Name'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'اسم العميل' : 'Client Name'}
+              </label>
               <Input
                 value={customerNameFilter}
-                onChange={(e) => { setCustomerNameFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setCustomerNameFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'اسم العامل' : 'Worker Name'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'اسم العامل' : 'Worker Name'}
+              </label>
               <Input
                 value={workerNameFilter}
-                onChange={(e) => { setWorkerNameFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setWorkerNameFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'رقم هوية العميل' : 'Customer National ID'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'رقم هوية العميل' : 'Customer National ID'}
+              </label>
               <Input
                 value={customerNationalIdFilter}
-                onChange={(e) => { setCustomerNationalIdFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setCustomerNationalIdFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'رقم الجواز' : 'Passport Number'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'رقم الجواز' : 'Passport Number'}
+              </label>
               <Input
                 value={workerPassportFilter}
-                onChange={(e) => { setWorkerPassportFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setWorkerPassportFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'رقم العامل' : 'Worker ID / Number'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'رقم العامل' : 'Worker ID / Number'}
+              </label>
               <Input
                 value={workerNumberFilter}
-                onChange={(e) => { setWorkerNumberFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setWorkerNumberFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'الجوال' : 'Mobile Number'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'الجوال' : 'Mobile Number'}
+              </label>
               <Input
                 value={customerPhoneFilter}
-                onChange={(e) => { setCustomerPhoneFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setCustomerPhoneFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
@@ -1334,57 +1472,89 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.visaNumber}</label>
               <Input
                 value={visaNumberFilter}
-                onChange={(e) => { setVisaNumberFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setVisaNumberFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'الحالة الخارجية' : 'External Status'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'الحالة الخارجية' : 'External Status'}
+              </label>
               <Select
                 value={externalStatusFilter}
-                onChange={(v) => { setExternalStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setExternalStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: t.allStatuses },
-                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({ ...o, value: String(o.value) })),
+                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({
+                    ...o,
+                    value: String(o.value),
+                  })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'حالة العقد اليدوي' : 'Manual Contract Status'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'حالة العقد اليدوي' : 'Manual Contract Status'}
+              </label>
               <Select
                 value={manualStatusFilter}
-                onChange={(v) => { setManualStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setManualStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: t.allStatuses },
-                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({ ...o, value: String(o.value) })),
+                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({
+                    ...o,
+                    value: String(o.value),
+                  })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'حالة التأشيرة' : 'Visa Status'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'حالة التأشيرة' : 'Visa Status'}
+              </label>
               <InputNumber
                 min={0}
                 value={visaStatusFilter}
-                onChange={(value) => { setVisaStatusFilter(value ?? null); setCurrentPage(1); }}
+                onChange={(value) => {
+                  setVisaStatusFilter(value ?? null);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'الجنسية' : 'Nationality'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'الجنسية' : 'Nationality'}
+              </label>
               <Select
                 value={nationalityFilter}
-                onChange={(v) => { setNationalityFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setNationalityFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
                 options={[
-                  { value: 'all', label: language === 'ar' ? 'جميع الجنسيات' : 'All Nationalities' },
+                  {
+                    value: 'all',
+                    label: language === 'ar' ? 'جميع الجنسيات' : 'All Nationalities',
+                  },
                   ...(nationalities as any[]).map((n) => ({
                     value: String(n.id),
                     label:
@@ -1398,10 +1568,15 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'الوظيفة' : 'Occupation / Job Title'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'الوظيفة' : 'Occupation / Job Title'}
+              </label>
               <Select
                 value={jobFilter}
-                onChange={(v) => { setJobFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setJobFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
@@ -1409,7 +1584,11 @@ export default function MediationContractsPage() {
                   { value: 'all', label: language === 'ar' ? 'جميع الوظائف' : 'All Jobs' },
                   ...(jobs as any[]).map((j) => ({
                     value: String(j.id),
-                    label: (language === 'ar' ? j.jobNameAr : j.jobNameEn) || j.jobNameAr || j.jobNameEn || `#${j.id}`,
+                    label:
+                      (language === 'ar' ? j.jobNameAr : j.jobNameEn) ||
+                      j.jobNameAr ||
+                      j.jobNameEn ||
+                      `#${j.id}`,
                   })),
                 ]}
               />
@@ -1419,49 +1598,79 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.status}</label>
               <Select
                 value={statusFilter}
-                onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: t.allStatuses },
-                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({ ...o, value: String(o.value) })),
+                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({
+                    ...o,
+                    value: String(o.value),
+                  })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'حالة خارجية لم تتم' : 'Incomplete External Status'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'حالة خارجية لم تتم' : 'Incomplete External Status'}
+              </label>
               <Select
                 value={incompleteExternalStatusFilter}
-                onChange={(v) => { setIncompleteExternalStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setIncompleteExternalStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: t.allStatuses },
-                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({ ...o, value: String(o.value) })),
+                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({
+                    ...o,
+                    value: String(o.value),
+                  })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'حالة خارجية مرت على العقد' : 'Past External Status'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'حالة خارجية مرت على العقد' : 'Past External Status'}
+              </label>
               <Select
                 value={pastExternalStatusFilter}
-                onChange={(v) => { setPastExternalStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setPastExternalStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: t.allStatuses },
-                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({ ...o, value: String(o.value) })),
+                  ...toSelectOptions([...MEDIATION_CONTRACT_STATUS], language).map((o) => ({
+                    ...o,
+                    value: String(o.value),
+                  })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'حالات الضمان' : 'Warranty / Guarantee Status'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'حالات الضمان' : 'Warranty / Guarantee Status'}
+              </label>
               <Select
                 value={warrantyStatusFilter}
-                onChange={(v) => { setWarrantyStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setWarrantyStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
-                  { value: 'all', label: language === 'ar' ? 'كل حالات الضمان' : 'All Warranty Statuses' },
+                  {
+                    value: 'all',
+                    label: language === 'ar' ? 'كل حالات الضمان' : 'All Warranty Statuses',
+                  },
                   { value: '14', label: language === 'ar' ? 'فترة الضمان' : 'Warranty Period' },
                   { value: '16', label: language === 'ar' ? 'مرتجع' : 'Returned' },
                 ]}
@@ -1472,20 +1681,31 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.type}</label>
               <Select
                 value={typeFilter}
-                onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setTypeFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: t.allTypes },
-                  ...toSelectOptions([...MEDIATION_CONTRACT_TYPE], language).map((o) => ({ ...o, value: String(o.value) })),
+                  ...toSelectOptions([...MEDIATION_CONTRACT_TYPE], language).map((o) => ({
+                    ...o,
+                    value: String(o.value),
+                  })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'عامل معين' : 'Designated Worker'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'عامل معين' : 'Designated Worker'}
+              </label>
               <Select
                 value={workerAssignmentFilter}
-                onChange={(v) => { setWorkerAssignmentFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setWorkerAssignmentFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'الكل' : 'All' },
@@ -1496,10 +1716,15 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'تأمين عقود العمالة المنزلية' : 'Domestic Worker Insurance'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'تأمين عقود العمالة المنزلية' : 'Domestic Worker Insurance'}
+              </label>
               <Select
                 value={insuranceFilter}
-                onChange={(v) => { setInsuranceFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setInsuranceFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'الكل' : 'All' },
@@ -1513,10 +1738,16 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.paymentStatus}</label>
               <Select
                 value={paymentFilter}
-                onChange={(v) => { setPaymentFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setPaymentFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
-                  { value: 'all', label: language === 'ar' ? 'كل حالات الدفع' : 'All Payment Statuses' },
+                  {
+                    value: 'all',
+                    label: language === 'ar' ? 'كل حالات الدفع' : 'All Payment Statuses',
+                  },
                   { value: 'paid', label: t.paid },
                   { value: 'unpaid', label: t.unpaid },
                 ]}
@@ -1524,13 +1755,22 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'سداد مساند' : 'Musaned Payment'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'سداد مساند' : 'Musaned Payment'}
+              </label>
               <Select
                 value={musanedPaymentStatusFilter}
-                onChange={(v) => { setMusanedPaymentStatusFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setMusanedPaymentStatusFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
-                  { value: 'all', label: language === 'ar' ? 'كل حالات سداد مساند' : 'All Musaned Payment Statuses' },
+                  {
+                    value: 'all',
+                    label:
+                      language === 'ar' ? 'كل حالات سداد مساند' : 'All Musaned Payment Statuses',
+                  },
                   { value: '0', label: language === 'ar' ? 'غير مدفوع' : 'Unpaid' },
                   { value: '1', label: language === 'ar' ? 'مدفوع جزئياً' : 'Partially Paid' },
                   { value: '2', label: language === 'ar' ? 'مدفوع' : 'Paid' },
@@ -1539,24 +1779,37 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'استبدال العقود' : 'Contract Replacement'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'استبدال العقود' : 'Contract Replacement'}
+              </label>
               <Select
                 value={replacementFilter}
-                onChange={(v) => { setReplacementFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setReplacementFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'الكل' : 'All' },
                   { value: 'true', label: language === 'ar' ? 'استبدال' : 'Replacement' },
-                  { value: 'false', label: language === 'ar' ? 'ليس استبدالاً' : 'Not Replacement' },
+                  {
+                    value: 'false',
+                    label: language === 'ar' ? 'ليس استبدالاً' : 'Not Replacement',
+                  },
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'عمالة تمت إضافتها اليوم' : 'Workers Added Today'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'عمالة تمت إضافتها اليوم' : 'Workers Added Today'}
+              </label>
               <Select
                 value={workersAddedTodayFilter}
-                onChange={(v) => { setWorkersAddedTodayFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setWorkersAddedTodayFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'الكل' : 'All' },
@@ -1567,10 +1820,15 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'الديانة' : 'Religion'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'الديانة' : 'Religion'}
+              </label>
               <Select
                 value={religionFilter}
-                onChange={(v) => { setReligionFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setReligionFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'كل الديانات' : 'All Religions' },
@@ -1582,10 +1840,15 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'سبق له العمل' : 'Prior Experience'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'سبق له العمل' : 'Prior Experience'}
+              </label>
               <Select
                 value={previousExperienceFilter}
-                onChange={(v) => { setPreviousExperienceFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setPreviousExperienceFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'الكل' : 'All' },
@@ -1596,10 +1859,15 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'عميل مهم' : 'VIP / Important Client'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'عميل مهم' : 'VIP / Important Client'}
+              </label>
               <Select
                 value={vipFilter}
-                onChange={(v) => { setVipFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setVipFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 options={[
                   { value: 'all', label: language === 'ar' ? 'الكل' : 'All' },
@@ -1610,10 +1878,15 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'رقم المرجع' : 'Reference Number'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'رقم المرجع' : 'Reference Number'}
+              </label>
               <Input
                 value={referenceNumberFilter}
-                onChange={(e) => { setReferenceNumberFilter(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setReferenceNumberFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 allowClear
               />
             </Col>
@@ -1622,7 +1895,10 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{language === 'ar' ? 'الوكيل' : 'Agent'}</label>
               <Select
                 value={agentFilter}
-                onChange={(v) => { setAgentFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setAgentFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
@@ -1630,17 +1906,26 @@ export default function MediationContractsPage() {
                   { value: 'all', label: t.allAgents },
                   ...(agents as any[]).map((a) => ({
                     value: String(a.id),
-                    label: (language === 'ar' ? a.agentNameAr : a.agentNameEn) || a.agentNameAr || a.agentNameEn || `#${a.id}`,
+                    label:
+                      (language === 'ar' ? a.agentNameAr : a.agentNameEn) ||
+                      a.agentNameAr ||
+                      a.agentNameEn ||
+                      `#${a.id}`,
                   })),
                 ]}
               />
             </Col>
 
             <Col xs={24} md={6}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'المسوق' : 'Marketer'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'المسوق' : 'Marketer'}
+              </label>
               <Select
                 value={marketerFilter}
-                onChange={(v) => { setMarketerFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setMarketerFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
@@ -1648,7 +1933,11 @@ export default function MediationContractsPage() {
                   { value: 'all', label: t.allMarketers },
                   ...(marketers as any[]).map((m) => ({
                     value: String(m.id),
-                    label: (language === 'ar' ? m.nameAr : m.nameEn) || m.nameAr || m.nameEn || `#${m.id}`,
+                    label:
+                      (language === 'ar' ? m.nameAr : m.nameEn) ||
+                      m.nameAr ||
+                      m.nameEn ||
+                      `#${m.id}`,
                   })),
                 ]}
               />
@@ -1658,7 +1947,10 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.createdBy}</label>
               <Select
                 value={createdByFilter}
-                onChange={(v) => { setCreatedByFilter(v); setCurrentPage(1); }}
+                onChange={(v) => {
+                  setCreatedByFilter(v);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
                 showSearch
                 optionFilterProp="label"
@@ -1673,28 +1965,43 @@ export default function MediationContractsPage() {
             </Col>
 
             <Col xs={24} md={12}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'تاريخ الإنشاء' : 'Creation Date'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'تاريخ الإنشاء' : 'Creation Date'}
+              </label>
               <DateRangeFilter
                 value={dateRange}
-                onChange={(range) => { setDateRange(range); setCurrentPage(1); }}
+                onChange={(range) => {
+                  setDateRange(range);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
 
             <Col xs={24} md={12}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'تاريخ الإلغاء' : 'Cancellation Date'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'تاريخ الإلغاء' : 'Cancellation Date'}
+              </label>
               <DateRangeFilter
                 value={cancellationDateRange}
-                onChange={(range) => { setCancellationDateRange(range); setCurrentPage(1); }}
+                onChange={(range) => {
+                  setCancellationDateRange(range);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
 
             <Col xs={24} md={12}>
-              <label className={styles.filterLabel}>{language === 'ar' ? 'تاريخ الوصول' : 'Arrival Date'}</label>
+              <label className={styles.filterLabel}>
+                {language === 'ar' ? 'تاريخ الوصول' : 'Arrival Date'}
+              </label>
               <DateRangeFilter
                 value={arrivalDateRange}
-                onChange={(range) => { setArrivalDateRange(range); setCurrentPage(1); }}
+                onChange={(range) => {
+                  setArrivalDateRange(range);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
@@ -1703,7 +2010,10 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.paymentDateLabel}</label>
               <DateRangeFilter
                 value={paymentDateRange}
-                onChange={(range) => { setPaymentDateRange(range); setCurrentPage(1); }}
+                onChange={(range) => {
+                  setPaymentDateRange(range);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
@@ -1712,7 +2022,10 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.invoicePaymentDate}</label>
               <DateRangeFilter
                 value={invoicePaymentDateRange}
-                onChange={(range) => { setInvoicePaymentDateRange(range); setCurrentPage(1); }}
+                onChange={(range) => {
+                  setInvoicePaymentDateRange(range);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
@@ -1721,7 +2034,10 @@ export default function MediationContractsPage() {
               <label className={styles.filterLabel}>{t.visaDateLabel}</label>
               <DateRangeFilter
                 value={visaDateRange}
-                onChange={(range) => { setVisaDateRange(range); setCurrentPage(1); }}
+                onChange={(range) => {
+                  setVisaDateRange(range);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%' }}
               />
             </Col>
@@ -1774,9 +2090,16 @@ export default function MediationContractsPage() {
 
       {/* ========== CUSTOMER SELECT → navigates to /add ========== */}
       <Modal
-        title={language === 'ar' ? 'اختر العميل لإنشاء عقد وساطة' : 'Select Customer to Create Mediation Contract'}
+        title={
+          language === 'ar'
+            ? 'اختر العميل لإنشاء عقد وساطة'
+            : 'Select Customer to Create Mediation Contract'
+        }
         open={showCustomerSelectModal && canCreateContract}
-        onCancel={() => { setShowCustomerSelectModal(false); setCustomerSelectId(null); }}
+        onCancel={() => {
+          setShowCustomerSelectModal(false);
+          setCustomerSelectId(null);
+        }}
         onOk={() => {
           if (!canCreateContract) return;
           if (customerSelectId) {
@@ -1792,16 +2115,23 @@ export default function MediationContractsPage() {
           <Form.Item label={language === 'ar' ? 'العميل' : 'Customer'} required>
             <Select
               showSearch
-              placeholder={language === 'ar' ? 'ابحث واختر العميل...' : 'Search and select customer...'}
+              placeholder={
+                language === 'ar' ? 'ابحث واختر العميل...' : 'Search and select customer...'
+              }
               loading={isLoadingCustomers}
               value={customerSelectId}
               onChange={(val) => setCustomerSelectId(val)}
               filterOption={(input, option) =>
-                String(option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                String(option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
               }
               options={(Array.isArray(allCustomers) ? allCustomers : []).map((c: any) => ({
                 value: c.id,
-                label: language === 'ar' ? c.arabicName || c.englishName || `#${c.id}` : c.englishName || c.arabicName || `#${c.id}`,
+                label:
+                  language === 'ar'
+                    ? c.arabicName || c.englishName || `#${c.id}`
+                    : c.englishName || c.arabicName || `#${c.id}`,
               }))}
               style={{ width: '100%' }}
             />
@@ -1833,7 +2163,10 @@ export default function MediationContractsPage() {
             label={t.cancelNote}
             rules={[{ required: true, message: language === 'ar' ? 'مطلوب' : 'Required' }]}
           >
-            <Input.TextArea rows={3} placeholder={language === 'ar' ? 'سبب الإلغاء...' : 'Cancellation reason...'} />
+            <Input.TextArea
+              rows={3}
+              placeholder={language === 'ar' ? 'سبب الإلغاء...' : 'Cancellation reason...'}
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -1842,17 +2175,17 @@ export default function MediationContractsPage() {
       <Modal
         title={t.signContract}
         open={showSignModal && canApproveContract}
-        onCancel={() => { setShowSignModal(false); signForm.resetFields(); }}
+        onCancel={() => {
+          setShowSignModal(false);
+          signForm.resetFields();
+        }}
         onOk={canApproveContract ? handleSignContract : undefined}
         okText={t.save}
         cancelText={t.cancel}
         confirmLoading={isSigning}
       >
         <Form form={signForm} layout="vertical">
-          <Form.Item
-            name="musanedContractNumber"
-            label={t.musanedNumber}
-          >
+          <Form.Item name="musanedContractNumber" label={t.musanedNumber}>
             <Input placeholder={t.musanedNumber} />
           </Form.Item>
           <Form.Item name="invoicePaymentDate" label={t.invoicePaymentDate}>
@@ -1865,7 +2198,10 @@ export default function MediationContractsPage() {
       <Modal
         title={t.generateDelivery}
         open={showDeliveryModal && canUpdateContract}
-        onCancel={() => { setShowDeliveryModal(false); deliveryForm.resetFields(); }}
+        onCancel={() => {
+          setShowDeliveryModal(false);
+          deliveryForm.resetFields();
+        }}
         onOk={canUpdateContract ? handleGenerateDelivery : undefined}
         okText={t.submit}
         cancelText={t.cancel}
@@ -1885,7 +2221,10 @@ export default function MediationContractsPage() {
       <Modal
         title={t.confirmDelivery}
         open={showDeliverySignModal && canUpdateContract}
-        onCancel={() => { setShowDeliverySignModal(false); deliverySignForm.resetFields(); }}
+        onCancel={() => {
+          setShowDeliverySignModal(false);
+          deliverySignForm.resetFields();
+        }}
         onOk={canUpdateContract ? handleSignDelivery : undefined}
         okText={t.save}
         cancelText={t.cancel}
@@ -1902,7 +2241,10 @@ export default function MediationContractsPage() {
       <Modal
         title={t.warrantyReturn}
         open={showWarrantyReturnModal && canUpdateContract}
-        onCancel={() => { setShowWarrantyReturnModal(false); warrantyReturnForm.resetFields(); }}
+        onCancel={() => {
+          setShowWarrantyReturnModal(false);
+          warrantyReturnForm.resetFields();
+        }}
         onOk={canUpdateContract ? handleWarrantyReturn : undefined}
         okText={t.submit}
         cancelText={t.cancel}
@@ -1926,9 +2268,13 @@ export default function MediationContractsPage() {
                 2026-09-08 per BACKEND_ENUMS_README.md audit: this previously used
                 an unrelated, unverified value set (Incompatibility/Misconduct). */}
             <Select placeholder={t.returnReason}>
-              <Select.Option value={1}>{language === 'ar' ? 'إضراب عن العمل' : 'Strike'}</Select.Option>
+              <Select.Option value={1}>
+                {language === 'ar' ? 'إضراب عن العمل' : 'Strike'}
+              </Select.Option>
               <Select.Option value={2}>{language === 'ar' ? 'مرض' : 'Illness'}</Select.Option>
-              <Select.Option value={3}>{language === 'ar' ? 'طلب العميل' : 'Customer Request'}</Select.Option>
+              <Select.Option value={3}>
+                {language === 'ar' ? 'طلب العميل' : 'Customer Request'}
+              </Select.Option>
               <Select.Option value={4}>{language === 'ar' ? 'أخرى' : 'Other'}</Select.Option>
             </Select>
           </Form.Item>
@@ -1937,7 +2283,11 @@ export default function MediationContractsPage() {
             label={t.daysWithCustomer}
             rules={[
               { required: true, message: language === 'ar' ? 'مطلوب' : 'Required' },
-              { type: 'number', min: 1, message: language === 'ar' ? 'يجب أن يكون أكبر من صفر' : 'Must be greater than 0' },
+              {
+                type: 'number',
+                min: 1,
+                message: language === 'ar' ? 'يجب أن يكون أكبر من صفر' : 'Must be greater than 0',
+              },
             ]}
             extra={t.warrantyNote}
           >
@@ -1963,13 +2313,23 @@ export default function MediationContractsPage() {
                     marginBottom: 16,
                   }}
                 >
-                  <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{t.refundAmount}</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: refund > 0 ? '#fa8c16' : '#52c41a' }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+                    {t.refundAmount}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: refund > 0 ? '#fa8c16' : '#52c41a',
+                    }}
+                  >
                     {fmtCurrency(refund)}
                   </div>
                   {days >= 90 && (
                     <div style={{ fontSize: 12, color: '#52c41a', marginTop: 4 }}>
-                      {language === 'ar' ? '✓ انتهت فترة الضمان — لا يوجد مبلغ مسترد' : '✓ Warranty period expired — no refund'}
+                      {language === 'ar'
+                        ? '✓ انتهت فترة الضمان — لا يوجد مبلغ مسترد'
+                        : '✓ Warranty period expired — no refund'}
                     </div>
                   )}
                 </div>
@@ -1978,7 +2338,13 @@ export default function MediationContractsPage() {
           </Form.Item>
 
           <Form.Item name="newWorkerLocation" label={t.newWorkerLocation}>
-            <Input placeholder={language === 'ar' ? 'اختياري — مكان إعادة توجيه العامل' : 'Optional — where the worker is being redirected'} />
+            <Input
+              placeholder={
+                language === 'ar'
+                  ? 'اختياري — مكان إعادة توجيه العامل'
+                  : 'Optional — where the worker is being redirected'
+              }
+            />
           </Form.Item>
           <Form.Item name="notes" label={t.note}>
             <Input.TextArea rows={2} />
@@ -1990,7 +2356,10 @@ export default function MediationContractsPage() {
       <Modal
         title={t.updateStatus}
         open={showUpdateStatusModal && canUpdateContract}
-        onCancel={() => { setShowUpdateStatusModal(false); updateStatusForm.resetFields(); }}
+        onCancel={() => {
+          setShowUpdateStatusModal(false);
+          updateStatusForm.resetFields();
+        }}
         onOk={canUpdateContract ? handleUpdateStatus : undefined}
         okText={t.save}
         cancelText={t.cancel}
@@ -2002,7 +2371,10 @@ export default function MediationContractsPage() {
             label={t.newStatus}
             rules={[{ required: true, message: language === 'ar' ? 'مطلوب' : 'Required' }]}
           >
-            <Select placeholder={t.newStatus} options={toSelectOptions([...MEDIATION_CONTRACT_STATUS], language)} />
+            <Select
+              placeholder={t.newStatus}
+              options={toSelectOptions([...MEDIATION_CONTRACT_STATUS], language)}
+            />
           </Form.Item>
           <Form.Item name="notes" label={t.note}>
             <Input.TextArea rows={2} />
@@ -2020,7 +2392,10 @@ export default function MediationContractsPage() {
           </span>
         }
         open={showComplaintModal && canUpdateContract}
-        onCancel={() => { setShowComplaintModal(false); complaintForm.resetFields(); }}
+        onCancel={() => {
+          setShowComplaintModal(false);
+          complaintForm.resetFields();
+        }}
         onOk={canUpdateContract ? handleAddComplaint : undefined}
         okText={t.submit}
         cancelText={t.cancel}
@@ -2033,20 +2408,41 @@ export default function MediationContractsPage() {
             label={t.complaintSource}
             rules={[{ required: true, message: language === 'ar' ? 'مطلوب' : 'Required' }]}
           >
-            <Select placeholder={t.complaintSource} options={toSelectOptions([...COMPLAINT_SOURCE], language)} />
+            <Select
+              placeholder={t.complaintSource}
+              options={toSelectOptions([...COMPLAINT_SOURCE], language)}
+            />
           </Form.Item>
           <Form.Item
             name="priority"
             label={t.complaintPriority}
             rules={[{ required: true, message: language === 'ar' ? 'مطلوب' : 'Required' }]}
           >
-            <Select placeholder={t.complaintPriority} options={toSelectOptions([...COMPLAINT_PRIORITY], language)} />
+            <Select
+              placeholder={t.complaintPriority}
+              options={toSelectOptions([...COMPLAINT_PRIORITY], language)}
+            />
           </Form.Item>
           <Form.Item name="notesAr" label={language === 'ar' ? 'ملاحظات (عربي)' : 'Notes (Arabic)'}>
-            <Input.TextArea rows={3} placeholder={language === 'ar' ? 'وصف الشكوى بالعربي...' : 'Complaint description in Arabic...'} />
+            <Input.TextArea
+              rows={3}
+              placeholder={
+                language === 'ar' ? 'وصف الشكوى بالعربي...' : 'Complaint description in Arabic...'
+              }
+            />
           </Form.Item>
-          <Form.Item name="notesEn" label={language === 'ar' ? 'ملاحظات (إنجليزي)' : 'Notes (English)'}>
-            <Input.TextArea rows={3} placeholder={language === 'ar' ? 'وصف الشكوى بالإنجليزي...' : 'Complaint description in English...'} />
+          <Form.Item
+            name="notesEn"
+            label={language === 'ar' ? 'ملاحظات (إنجليزي)' : 'Notes (English)'}
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder={
+                language === 'ar'
+                  ? 'وصف الشكوى بالإنجليزي...'
+                  : 'Complaint description in English...'
+              }
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -2061,7 +2457,10 @@ export default function MediationContractsPage() {
           </span>
         }
         open={showEndServiceModal && canUpdateContract}
-        onCancel={() => { setShowEndServiceModal(false); endServiceForm.resetFields(); }}
+        onCancel={() => {
+          setShowEndServiceModal(false);
+          endServiceForm.resetFields();
+        }}
         onOk={canUpdateContract ? handleEndWorkerService : undefined}
         okText={t.save}
         cancelText={t.cancel}
@@ -2072,7 +2471,9 @@ export default function MediationContractsPage() {
           <Form.Item name="reason" label={t.endServiceReason}>
             <Input.TextArea
               rows={3}
-              placeholder={language === 'ar' ? 'سبب إنهاء الخدمة...' : 'Reason for ending service...'}
+              placeholder={
+                language === 'ar' ? 'سبب إنهاء الخدمة...' : 'Reason for ending service...'
+              }
             />
           </Form.Item>
         </Form>
@@ -2100,10 +2501,7 @@ export default function MediationContractsPage() {
       >
         <p style={{ color: '#8c8c8c', marginBottom: 16 }}>{t.assignWorkerHint}</p>
         <Form form={assignWorkerForm} layout="vertical">
-          <Form.Item
-            name="workerId"
-            label={t.assignWorker}
-          >
+          <Form.Item name="workerId" label={t.assignWorker}>
             <Select
               showSearch
               allowClear
@@ -2116,20 +2514,29 @@ export default function MediationContractsPage() {
                 const worker = (assignWorkers as Worker[]).find(
                   (w) => String(w.id) === String(workerId)
                 );
-                assignWorkerForm.setFieldValue('workerPassportNumber', worker?.passportNo ?? assignPassportSearch);
+                assignWorkerForm.setFieldValue(
+                  'workerPassportNumber',
+                  worker?.passportNo ?? assignPassportSearch
+                );
               }}
               notFoundContent={
                 isLoadingAssignWorkers
-                  ? (language === 'ar' ? 'جارٍ البحث...' : 'Searching...')
+                  ? language === 'ar'
+                    ? 'جارٍ البحث...'
+                    : 'Searching...'
                   : assignPassportDebounced
-                  ? (language === 'ar' ? 'لا يوجد عامل متاح مطابق' : 'No matching available worker')
-                  : (language === 'ar' ? 'اكتب رقم الجواز للبحث' : 'Type a passport number to search')
+                    ? language === 'ar'
+                      ? 'لا يوجد عامل متاح مطابق'
+                      : 'No matching available worker'
+                    : language === 'ar'
+                      ? 'اكتب رقم الجواز للبحث'
+                      : 'Type a passport number to search'
               }
               options={(assignWorkers as Worker[]).map((w) => ({
                 value: String(w.id),
                 label:
-                  ((language === 'ar' ? w.fullNameAr : w.fullNameEn || w.fullNameAr) || `#${w.id}`) +
-                  (w.passportNo ? ` — ${w.passportNo}` : ''),
+                  ((language === 'ar' ? w.fullNameAr : w.fullNameEn || w.fullNameAr) ||
+                    `#${w.id}`) + (w.passportNo ? ` — ${w.passportNo}` : ''),
               }))}
             />
           </Form.Item>
@@ -2155,7 +2562,6 @@ export default function MediationContractsPage() {
           </Form.Item>
         </Form>
       </Modal>
-
     </div>
   );
 }

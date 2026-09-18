@@ -72,7 +72,6 @@
   box-shadow: 0 4px 12px rgba(0, 51, 102, 0.25) !important;
 }
 
-
 .secondaryBtn {
   background: rgba(255, 255, 255, 0.1);
   color: white;
@@ -425,6 +424,204 @@
   font-weight: 700;
 }
 
+/* ── Musaaed-style contract card ──
+   The status is isolated on one side, the working information stays central,
+   and the contract number/financial identity has its own opposite rail. */
+.cardContent {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(430px, 1.7fr) minmax(235px, 0.85fr);
+  grid-template-areas: 'status details identity';
+  align-items: stretch;
+}
+
+:global([dir='ltr']) .cardContent {
+  grid-template-areas: 'identity details status';
+}
+
+.statusPanel {
+  grid-area: status;
+  padding: 18px;
+  background: #f8fafc;
+  border-inline-end: 1px solid #e5edf4;
+}
+
+.contractDetailsPanel {
+  grid-area: details;
+  min-inline-size: 0;
+  padding: 20px 22px;
+}
+
+.identityPanel {
+  grid-area: identity;
+  padding: 18px;
+  background: linear-gradient(160deg, #f7fbff 0%, #edf5fc 100%);
+  border-inline-start: 1px solid #dce8f3;
+}
+
+.panelHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  color: #003366;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.statusHero {
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 9px;
+  background: #fff;
+  border: 1px solid #e5edf4;
+}
+
+.statusHero :global(.ant-badge-status-text) {
+  color: #173a5e;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.statusFacts,
+.identityDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.statusFacts > div,
+.identityDetails > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 0;
+  border-bottom: 1px solid #e8eef4;
+}
+
+.statusFacts > div:last-child,
+.identityDetails > div:last-child {
+  border-bottom: none;
+}
+
+.statusFacts span,
+.identityDetails span {
+  color: #8191a1;
+  font-size: 11px;
+}
+
+.statusFacts strong,
+.identityDetails strong {
+  color: #314a60;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contractDetailsPanel .customerSection {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #dce8f3;
+  border-radius: 9px;
+  background: #f9fcff;
+}
+
+.contractDetailsPanel .customerName {
+  color: #183b5d;
+}
+
+.contractDetailsPanel .customerMeta {
+  color: #688096;
+  font-size: 12px;
+}
+
+.contractDetailsPanel .detailsSection {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #e5edf4;
+  border-radius: 10px;
+}
+
+.contractDetailsPanel .detailItem {
+  align-items: center;
+  min-inline-size: 0;
+  padding: 11px;
+  border-block-end: 1px solid #edf1f5;
+  border-inline-end: 1px solid #edf1f5;
+}
+
+.contractDetailsPanel .detailItem:nth-child(3n) {
+  border-inline-end: none;
+}
+
+.contractDetailsPanel .detailItem:nth-last-child(-n + 3) {
+  border-block-end: none;
+}
+
+.contractDetailsPanel .detailIcon {
+  color: #1769aa;
+  font-size: 15px;
+  margin: 0;
+}
+
+.contractDetailsPanel .detailLabel {
+  color: #7b8d9e;
+  font-size: 11px;
+}
+
+.contractDetailsPanel .detailValue {
+  overflow-wrap: anywhere;
+  color: #243c51;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.financialSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 14px;
+}
+
+.financialSummary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f7fafc;
+}
+
+.financialSummary span {
+  color: #7d8e9f;
+  font-size: 10px;
+}
+
+.financialSummary strong {
+  color: #173a5e;
+  font-size: 12px;
+}
+
+.identityNumber {
+  margin-bottom: 10px;
+  color: #003366;
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.identityTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.identityPanel .totalCostBanner {
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #003366 0%, #1769aa 100%);
+}
+
 /* View Button */
 .viewBtn {
   background: linear-gradient(135deg, #003366 0%, #00478c 100%) !important;
@@ -751,7 +948,6 @@
   font-weight: 700;
 }
 
-
 .contractsPage :global(.ant-badge-status-text) {
   font-size: 13px;
   font-weight: 500;
@@ -764,6 +960,74 @@
 
 .contractsPage :global(.ant-input-affix-wrapper) {
   border-radius: 8px !important;
+}
+
+@media (max-width: 1050px) {
+  .cardContent,
+  :global([dir='ltr']) .cardContent {
+    grid-template-columns: minmax(230px, 0.8fr) minmax(400px, 1.45fr);
+    grid-template-areas:
+      'identity details'
+      'status details';
+  }
+
+  .identityPanel {
+    border-inline-start: none;
+    border-block-end: 1px solid #dce8f3;
+  }
+}
+
+@media (max-width: 680px) {
+  .cardContent,
+  :global([dir='ltr']) .cardContent {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'identity'
+      'details'
+      'status';
+  }
+
+  .statusPanel,
+  .identityPanel {
+    border-inline: none;
+  }
+
+  .contractDetailsPanel,
+  .identityPanel {
+    border-block-end: 1px solid #e5edf4;
+  }
+
+  .contractDetailsPanel .detailsSection {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contractDetailsPanel .detailItem:nth-child(3n) {
+    border-inline-end: 1px solid #edf1f5;
+  }
+
+  .contractDetailsPanel .detailItem:nth-child(2n) {
+    border-inline-end: none;
+  }
+
+  .financialSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .contractDetailsPanel {
+    padding: 16px;
+  }
+
+  .contractDetailsPanel .detailsSection {
+    grid-template-columns: 1fr;
+  }
+
+  .contractDetailsPanel .detailItem,
+  .contractDetailsPanel .detailItem:nth-child(3n),
+  .contractDetailsPanel .detailItem:nth-child(2n) {
+    border-inline-end: none;
+  }
 }
 
 /* Print Styles */
