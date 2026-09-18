@@ -54,6 +54,7 @@ import {
   useUpdateFollowUpDescription,
 } from '@/hooks/api/useMediationFollowUp';
 import { useMediationContracts } from '@/hooks/api/useMediationContracts';
+import { useNationalities } from '@/hooks/api/useNationalities';
 import { InputDescriptionModal } from '@/components/followup/InputDescriptionModal';
 import {
   hasFilledInputDescription,
@@ -92,8 +93,14 @@ function useT(language: string) {
         ar: 'لا يمكن تغيير الحالة حتى تكتمل المرحلة السابقة',
         en: 'Cannot change status until the previous stage is finished',
       },
-      noItems: { ar: 'لا توجد مراحل متابعة لهذا العقد', en: 'No follow-up stages for this contract' },
-      noItemsForFilter: { ar: 'لا توجد مراحل مطابقة لهذه التصفية', en: 'No stages match this filter' },
+      noItems: {
+        ar: 'لا توجد مراحل متابعة لهذا العقد',
+        en: 'No follow-up stages for this contract',
+      },
+      noItemsForFilter: {
+        ar: 'لا توجد مراحل مطابقة لهذه التصفية',
+        en: 'No stages match this filter',
+      },
       inputDescription: { ar: 'البيانات المدخلة', en: 'Input Data' },
       loading: { ar: 'جاري التحميل...', en: 'Loading...' },
       dataSaved: { ar: 'تم حفظ بيانات المرحلة بنجاح', en: 'Stage data saved successfully' },
@@ -166,22 +173,42 @@ function useT(language: string) {
 function resultTag(result: number | null | undefined, t: (k: string) => string) {
   switch (result) {
     case 2:
-      return <Tag icon={<CheckCircleOutlined />} color="success">{t('statusCompleted')}</Tag>;
+      return (
+        <Tag icon={<CheckCircleOutlined />} color="success">
+          {t('statusCompleted')}
+        </Tag>
+      );
     case 3:
-      return <Tag icon={<CloseCircleOutlined />} color="error">{t('statusFailed')}</Tag>;
+      return (
+        <Tag icon={<CloseCircleOutlined />} color="error">
+          {t('statusFailed')}
+        </Tag>
+      );
     case 4:
-      return <Tag icon={<MinusCircleOutlined />} color="default">{t('statusSkipped')}</Tag>;
+      return (
+        <Tag icon={<MinusCircleOutlined />} color="default">
+          {t('statusSkipped')}
+        </Tag>
+      );
     default:
-      return <Tag icon={<ClockCircleOutlined />} color="processing">{t('statusPending')}</Tag>;
+      return (
+        <Tag icon={<ClockCircleOutlined />} color="processing">
+          {t('statusPending')}
+        </Tag>
+      );
   }
 }
 
 function resultDotColor(result: number | null | undefined): string {
   switch (result) {
-    case 2: return '#52c41a';
-    case 3: return '#ff4d4f';
-    case 4: return '#8c8c8c';
-    default: return '#1677ff';
+    case 2:
+      return '#52c41a';
+    case 3:
+      return '#ff4d4f';
+    case 4:
+      return '#8c8c8c';
+    default:
+      return '#1677ff';
   }
 }
 
@@ -202,6 +229,28 @@ function contractStatusColor(statusId: number | null | undefined): string {
     default:
       return 'processing';
   }
+}
+
+/** Resolve legacy nationality UUIDs to the catalogue's display name. */
+function resolveNationalityName(
+  value: string | null | undefined,
+  nationalities: any[],
+  language: string
+) {
+  if (!value) return value;
+
+  const nationality = nationalities.find(
+    (item) => String(item?.id).toLowerCase() === String(value).toLowerCase()
+  );
+
+  if (!nationality) return value;
+
+  return (
+    (language === 'ar' ? nationality.nationalityNameAr : nationality.nationalityNameEn) ||
+    nationality.nationalityNameAr ||
+    nationality.nationalityNameEn ||
+    value
+  );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -233,6 +282,7 @@ export default function ContractFollowUpDetailPage() {
   // payload as GET /dashboard/{contractId}, no separate contract/customer/
   // nationality lookups needed.
   const { data: card, isLoading, refetch } = useMediationFollowUpDashboardCard(contractId);
+  const { data: nationalities = [] } = useNationalities();
   const items = useMemo(() => card?.followUpStages ?? [], [card]);
 
   const updateDescMutation = useUpdateFollowUpDescription(contractId);
@@ -387,7 +437,13 @@ export default function ContractFollowUpDetailPage() {
       {/* ── Summary bar — always visible, independent of stage data being filled;
           highlights (DOB, nationalities, national ID, passport, agent) shown up
           front, per the client's "مثل شاشة مساعد" request ── */}
-      <SummaryHeader t={t} isRTL={isRTL} card={card} loading={isLoading && !card} />
+      <SummaryHeader
+        t={t}
+        isRTL={isRTL}
+        card={card}
+        nationalities={nationalities}
+        loading={isLoading && !card}
+      />
       <OfferSummary t={t} isRTL={isRTL} card={card} loading={isLoading && !card} />
 
       {!isLoading && sortedItems.length === 0 ? (
@@ -614,15 +670,7 @@ function PageHeader({
 
 // ── Summary header: key contract/customer/worker/agent facts, always shown ────
 
-function SummaryItem({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: ReactNode;
-}) {
+function SummaryItem({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (
     <div className={styles.summaryItem}>
       <span className={styles.summaryIcon}>{icon}</span>
@@ -641,11 +689,13 @@ function SummaryHeader({
   t,
   isRTL,
   card,
+  nationalities,
   loading,
 }: {
   t: (k: string) => string;
   isRTL: boolean;
   card: FollowUpCard | undefined;
+  nationalities: any[];
   loading: boolean;
 }) {
   const highlights = card?.highlights;
@@ -660,15 +710,27 @@ function SummaryHeader({
   // Blank rather than formatDate's "-" placeholder, so SummaryItem renders "—".
   const dob = birthDate ? formatDate(birthDate, lang) : null;
   const lastUpdatedAt = card?.lastUpdatedAt ? formatDate(card.lastUpdatedAt, lang) : null;
-  const nationality = highlights?.customerNationality ?? customer?.nationality;
+  const nationality = resolveNationalityName(
+    highlights?.customerNationality ?? customer?.nationality,
+    nationalities,
+    isRTL ? 'ar' : 'en'
+  );
   const nationalId = highlights?.customerNationalId ?? customer?.nationalId;
-  const workerNationality =
+  const workerNationalityValue =
     (isRTL ? highlights?.workerNationalityAr : highlights?.workerNationalityEn) ??
     worker?.nationalityAr;
+  const workerNationality = resolveNationalityName(
+    workerNationalityValue,
+    nationalities,
+    isRTL ? 'ar' : 'en'
+  );
   const workerPassport = highlights?.workerPassportNumber ?? worker?.passportNumber;
   const agentName = header?.agentName || highlights?.agentName || agent?.nameAr;
-  const workerStatus = isRTL ? header?.workerStatusNameAr : header?.workerStatusNameEn ?? header?.workerStatusNameAr;
-  const statusName = (isRTL ? card?.statusNameAr : card?.statusNameEn ?? card?.statusNameAr) || null;
+  const workerStatus = isRTL
+    ? header?.workerStatusNameAr
+    : (header?.workerStatusNameEn ?? header?.workerStatusNameAr);
+  const statusName =
+    (isRTL ? card?.statusNameAr : (card?.statusNameEn ?? card?.statusNameAr)) || null;
 
   return (
     <Card className={styles.summaryCard} size="small" loading={loading}>
@@ -694,29 +756,113 @@ function SummaryHeader({
       </div>
 
       <div className={styles.summaryGrid}>
-        <SummaryItem icon={<FileTextOutlined />} label={t('summaryContractNumber')} value={card?.contractNumber != null ? `#${card.contractNumber}` : '—'} />
-        <SummaryItem icon={<FileTextOutlined />} label={t('summaryMusanedNumber')} value={card?.musanedContractNumber} />
-        <SummaryItem icon={<FileProtectOutlined />} label={t('summaryContractStatus')} value={statusName} />
-        <SummaryItem icon={<UserOutlined />} label={t('summaryCustomerName')} value={header?.customerName} />
+        <SummaryItem
+          icon={<FileTextOutlined />}
+          label={t('summaryContractNumber')}
+          value={card?.contractNumber != null ? `#${card.contractNumber}` : '—'}
+        />
+        <SummaryItem
+          icon={<FileTextOutlined />}
+          label={t('summaryMusanedNumber')}
+          value={card?.musanedContractNumber}
+        />
+        <SummaryItem
+          icon={<FileProtectOutlined />}
+          label={t('summaryContractStatus')}
+          value={statusName}
+        />
+        <SummaryItem
+          icon={<UserOutlined />}
+          label={t('summaryCustomerName')}
+          value={header?.customerName}
+        />
         <SummaryItem icon={<CalendarOutlined />} label={t('summaryDob')} value={dob} />
-        <SummaryItem icon={<CalendarOutlined />} label={t('summaryDobHijri')} value={highlights?.customerBirthDateHijri} />
-        <SummaryItem icon={<GlobalOutlined />} label={t('summaryClientNationality')} value={nationality} />
-        <SummaryItem icon={<IdcardOutlined />} label={t('summaryClientNationalId')} value={nationalId} />
-        <SummaryItem icon={<PhoneOutlined />} label={t('summaryCustomerPhone')} value={header?.customerPhone} />
-        <SummaryItem icon={<MailOutlined />} label={t('summaryCustomerEmail')} value={header?.customerEmail} />
-        <SummaryItem icon={<EnvironmentOutlined />} label={t('summaryCustomerCity')} value={header?.customerCity} />
-        <SummaryItem icon={<SafetyCertificateOutlined />} label={t('summaryVisaNumber')} value={header?.visaNumber} />
-        <SummaryItem icon={<GlobalOutlined />} label={t('summaryWorkerNationality')} value={workerNationality} />
-        <SummaryItem icon={<IdcardOutlined />} label={t('summaryWorkerPassport')} value={workerPassport} />
-        <SummaryItem icon={<UserOutlined />} label={t('summaryWorkerStatus')} value={workerStatus} />
-        <SummaryItem icon={<CalendarOutlined />} label={t('summaryWorkerAge')} value={worker?.age} />
-        <SummaryItem icon={<HeartOutlined />} label={t('summaryWorkerReligion')} value={worker?.religionNameAr} />
+        <SummaryItem
+          icon={<CalendarOutlined />}
+          label={t('summaryDobHijri')}
+          value={highlights?.customerBirthDateHijri}
+        />
+        <SummaryItem
+          icon={<GlobalOutlined />}
+          label={t('summaryClientNationality')}
+          value={nationality}
+        />
+        <SummaryItem
+          icon={<IdcardOutlined />}
+          label={t('summaryClientNationalId')}
+          value={nationalId}
+        />
+        <SummaryItem
+          icon={<PhoneOutlined />}
+          label={t('summaryCustomerPhone')}
+          value={header?.customerPhone}
+        />
+        <SummaryItem
+          icon={<MailOutlined />}
+          label={t('summaryCustomerEmail')}
+          value={header?.customerEmail}
+        />
+        <SummaryItem
+          icon={<EnvironmentOutlined />}
+          label={t('summaryCustomerCity')}
+          value={header?.customerCity}
+        />
+        <SummaryItem
+          icon={<SafetyCertificateOutlined />}
+          label={t('summaryVisaNumber')}
+          value={header?.visaNumber}
+        />
+        <SummaryItem
+          icon={<GlobalOutlined />}
+          label={t('summaryWorkerNationality')}
+          value={workerNationality}
+        />
+        <SummaryItem
+          icon={<IdcardOutlined />}
+          label={t('summaryWorkerPassport')}
+          value={workerPassport}
+        />
+        <SummaryItem
+          icon={<UserOutlined />}
+          label={t('summaryWorkerStatus')}
+          value={workerStatus}
+        />
+        <SummaryItem
+          icon={<CalendarOutlined />}
+          label={t('summaryWorkerAge')}
+          value={worker?.age}
+        />
+        <SummaryItem
+          icon={<HeartOutlined />}
+          label={t('summaryWorkerReligion')}
+          value={worker?.religionNameAr}
+        />
         <SummaryItem icon={<SolutionOutlined />} label={t('summaryAgentName')} value={agentName} />
-        <SummaryItem icon={<TagOutlined />} label={t('summaryContractCategory')} value={header?.contractCategoryName} />
-        <SummaryItem icon={<ClockCircleOutlined />} label={t('summaryCurrentStage')} value={card?.currentFollowUpStatusNameAr} />
-        <SummaryItem icon={<CalendarOutlined />} label={t('summaryDaysSinceCreation')} value={card?.daysSinceCreation} />
-        <SummaryItem icon={<HistoryOutlined />} label={t('summaryDaysSinceUpdate')} value={card?.daysSinceLastUpdate} />
-        <SummaryItem icon={<HistoryOutlined />} label={t('summaryLastUpdatedAt')} value={lastUpdatedAt} />
+        <SummaryItem
+          icon={<TagOutlined />}
+          label={t('summaryContractCategory')}
+          value={header?.contractCategoryName}
+        />
+        <SummaryItem
+          icon={<ClockCircleOutlined />}
+          label={t('summaryCurrentStage')}
+          value={card?.currentFollowUpStatusNameAr}
+        />
+        <SummaryItem
+          icon={<CalendarOutlined />}
+          label={t('summaryDaysSinceCreation')}
+          value={card?.daysSinceCreation}
+        />
+        <SummaryItem
+          icon={<HistoryOutlined />}
+          label={t('summaryDaysSinceUpdate')}
+          value={card?.daysSinceLastUpdate}
+        />
+        <SummaryItem
+          icon={<HistoryOutlined />}
+          label={t('summaryLastUpdatedAt')}
+          value={lastUpdatedAt}
+        />
       </div>
     </Card>
   );
@@ -758,8 +904,12 @@ function OfferSummary({
         <Descriptions.Item label={t('taxValue')}>{fmt(offer?.totalTaxValue)}</Descriptions.Item>
         <Descriptions.Item label={t('offerTotalCost')}>{fmt(offer?.totalCost)}</Descriptions.Item>
         <Descriptions.Item label={t('totalPaid')}>{fmt(offer?.totalPaid)}</Descriptions.Item>
-        <Descriptions.Item label={t('remainingAmount')}>{fmt(offer?.remainingAmount)}</Descriptions.Item>
-        <Descriptions.Item label={t('offerPaymentStatus')}>{offer?.paymentStatus || '—'}</Descriptions.Item>
+        <Descriptions.Item label={t('remainingAmount')}>
+          {fmt(offer?.remainingAmount)}
+        </Descriptions.Item>
+        <Descriptions.Item label={t('offerPaymentStatus')}>
+          {offer?.paymentStatus || '—'}
+        </Descriptions.Item>
       </Descriptions>
     </Card>
   );
@@ -833,21 +983,21 @@ function StageChip({
 
 // ── Human-readable label map for every JSON key ──────────────────────────────
 const FIELD_LABELS: Record<string, { ar: string; en: string }> = {
-  ActionDate:            { ar: 'تاريخ الإجراء',        en: 'Action Date' },
-  arrivalDate:           { ar: 'تاريخ الوصول',          en: 'Arrival Date' },
-  medicalStatus:         { ar: 'الحالة الطبية',          en: 'Medical Status' },
-  status:                { ar: 'الحالة',                 en: 'Status' },
-  contractAgentStatusId: { ar: 'الحالة',                 en: 'Status' },
-  Notes:                 { ar: 'الملاحظات',              en: 'Notes' },
-  authorizationSystem:   { ar: 'نظام التفويض',            en: 'Authorization System' },
-  authorizationBankName: { ar: 'البنك',                   en: 'Bank' },
-  AirlineCompanyId:      { ar: 'شركة الطيران',           en: 'Airline Company' },
-  CarrierLines:          { ar: 'اسم الناقل',             en: 'Carrier Lines' },
-  FlightNumber:          { ar: 'رقم الرحلة',             en: 'Flight Number' },
-  FlightPlaceId:         { ar: 'مكان الرحلة',            en: 'Flight Place' },
-  time:                  { ar: 'وقت الإقلاع',            en: 'Departure Time' },
-  DayReceipt:            { ar: 'تاريخ استلام التذكرة',   en: 'Ticket Receipt Date' },
-  TimeReceipt:           { ar: 'وقت استلام التذكرة',     en: 'Receipt Time' },
+  ActionDate: { ar: 'تاريخ الإجراء', en: 'Action Date' },
+  arrivalDate: { ar: 'تاريخ الوصول', en: 'Arrival Date' },
+  medicalStatus: { ar: 'الحالة الطبية', en: 'Medical Status' },
+  status: { ar: 'الحالة', en: 'Status' },
+  contractAgentStatusId: { ar: 'الحالة', en: 'Status' },
+  Notes: { ar: 'الملاحظات', en: 'Notes' },
+  authorizationSystem: { ar: 'نظام التفويض', en: 'Authorization System' },
+  authorizationBankName: { ar: 'البنك', en: 'Bank' },
+  AirlineCompanyId: { ar: 'شركة الطيران', en: 'Airline Company' },
+  CarrierLines: { ar: 'اسم الناقل', en: 'Carrier Lines' },
+  FlightNumber: { ar: 'رقم الرحلة', en: 'Flight Number' },
+  FlightPlaceId: { ar: 'مكان الرحلة', en: 'Flight Place' },
+  time: { ar: 'وقت الإقلاع', en: 'Departure Time' },
+  DayReceipt: { ar: 'تاريخ استلام التذكرة', en: 'Ticket Receipt Date' },
+  TimeReceipt: { ar: 'وقت استلام التذكرة', en: 'Receipt Time' },
 };
 
 // All status options merged — used to resolve a numeric code to its label
@@ -897,11 +1047,7 @@ function ItemDetailContent({
         {Object.entries(parsed).map(([key, value]) => {
           if (value == null || value === '') return null;
           const labels = FIELD_LABELS[key];
-          const label = labels
-            ? isRTL
-              ? labels.ar
-              : `${labels.en} / ${labels.ar}`
-            : key;
+          const label = labels ? (isRTL ? labels.ar : `${labels.en} / ${labels.ar}`) : key;
           return (
             <Descriptions.Item key={key} label={label}>
               {resolveStatusValue(key, value)}
@@ -914,10 +1060,7 @@ function ItemDetailContent({
 
   // Legacy HTML content
   return (
-    <div
-      style={{ padding: '8px 0' }}
-      dangerouslySetInnerHTML={{ __html: item.inputDescription }}
-    />
+    <div style={{ padding: '8px 0' }} dangerouslySetInnerHTML={{ __html: item.inputDescription }} />
   );
 }
 
@@ -974,8 +1117,7 @@ function StageDetailPanel({
       <div className={styles.itemMeta}>
         {item.dependsOnStatusName && (
           <span className={styles.metaItem}>
-            <span className={styles.metaLabel}>{t('dependsOn')}:</span>{' '}
-            {item.dependsOnStatusName}
+            <span className={styles.metaLabel}>{t('dependsOn')}:</span> {item.dependsOnStatusName}
           </span>
         )}
         {item.maxDays != null && (

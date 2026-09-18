@@ -179,6 +179,28 @@ function CardDetailRow({
   );
 }
 
+/** Resolve legacy nationality UUIDs to the catalogue's display name. */
+function resolveNationalityName(
+  value: string | null | undefined,
+  nationalities: any[],
+  language: string
+) {
+  if (!value) return value;
+
+  const nationality = nationalities.find(
+    (item) => String(item?.id).toLowerCase() === String(value).toLowerCase()
+  );
+
+  if (!nationality) return value;
+
+  return (
+    (language === 'ar' ? nationality.nationalityNameAr : nationality.nationalityNameEn) ||
+    nationality.nationalityNameAr ||
+    nationality.nationalityNameEn ||
+    value
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AutomaticFollowUpPage() {
@@ -535,14 +557,23 @@ export default function AutomaticFollowUpPage() {
       const lastUpdated = row.lastUpdatedAt ? formatDate(row.lastUpdatedAt, lang) : '—';
       // `customer`/`agent` hold the same data as `highlights` (§3.5) — used as a
       // fallback so a field still shows if only one of the two is populated.
-      const workerNationality =
+      const workerNationalityValue =
         (language === 'ar'
           ? row.highlights?.workerNationalityAr
           : row.highlights?.workerNationalityEn) ?? row.worker?.nationalityAr;
+      const workerNationality = resolveNationalityName(
+        workerNationalityValue,
+        nationalities as any[],
+        language
+      );
       const agentName = row.header?.agentName || row.highlights?.agentName || row.agent?.nameAr;
       const birthDate = row.highlights?.customerBirthDate ?? row.customer?.birthDate;
       const customerBirthDate = birthDate ? formatDate(birthDate, lang) : null;
-      const customerNationality = row.highlights?.customerNationality ?? row.customer?.nationality;
+      const customerNationality = resolveNationalityName(
+        row.highlights?.customerNationality ?? row.customer?.nationality,
+        nationalities as any[],
+        language
+      );
       const customerNationalId = row.highlights?.customerNationalId ?? row.customer?.nationalId;
       const workerPassport = row.highlights?.workerPassportNumber ?? row.worker?.passportNumber;
       const workerStatus =
@@ -837,7 +868,16 @@ export default function AutomaticFollowUpPage() {
         </Card>
       );
     },
-    [t, language, router, endServiceForm, cancelForm, canEndWorkerService, canCancelContract]
+    [
+      t,
+      language,
+      nationalities,
+      router,
+      endServiceForm,
+      cancelForm,
+      canEndWorkerService,
+      canCancelContract,
+    ]
   );
 
   return (
