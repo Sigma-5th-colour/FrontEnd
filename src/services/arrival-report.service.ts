@@ -3,16 +3,19 @@ import { api } from '@/lib/api/client';
 import type { ArrivalReportItem, ArrivalReportPage, ArrivalReportQuery } from '@/types/api.types';
 
 export class ArrivalReportService {
-  private static normalizeItem(item: unknown): ArrivalReportItem {
-    if (!item || typeof item !== 'object') return item as ArrivalReportItem;
-    return Object.entries(item as Record<string, unknown>).reduce<Record<string, unknown>>(
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private static normalizeItem(item: Record<string, unknown>): ArrivalReportItem {
+    return Object.entries(item).reduce<Record<string, unknown>>(
       (result, [key, value]) => {
         result[key] = value;
         result[key.charAt(0).toLowerCase() + key.slice(1)] = value;
         return result;
       },
       {}
-    ) as ArrivalReportItem;
+    ) as unknown as ArrivalReportItem;
   }
 
   static async getBrokerage(query: ArrivalReportQuery = {}): Promise<ArrivalReportPage> {
@@ -29,7 +32,7 @@ export class ArrivalReportService {
     const payload = response.data?.data?.value ?? response.data?.data ?? response.data?.value ?? response.data;
     const rawItems = payload?.items?.$values ?? payload?.items ?? payload?.$values ?? [];
     return {
-      items: Array.isArray(rawItems) ? rawItems.map(this.normalizeItem) : [],
+      items: Array.isArray(rawItems) ? rawItems.filter(this.isRecord).map(this.normalizeItem) : [],
       totalCount: payload?.totalCount ?? payload?.total ?? 0,
       pageNumber: payload?.pageNumber ?? query.pageNumber ?? 1,
       pageSize: payload?.pageSize ?? query.pageSize ?? 10,
