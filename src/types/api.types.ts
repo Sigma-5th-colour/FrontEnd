@@ -1459,6 +1459,161 @@ export interface AssignWorkerDto {
   workerPassportNumber?: string | null;
 }
 
+export interface AgentBackOutPreview {
+  willCreateReversal: boolean;
+  alreadyReversed: boolean;
+  reversalAmount: number;
+  agentId?: string | null;
+  agentName?: string | null;
+  message: string;
+}
+
+export interface AgentBackOutAccountingResult {
+  success: boolean;
+  reversalCreated: boolean;
+  alreadyReversed: boolean;
+  reversalAmount: number;
+  agentId?: string | null;
+  reversalJournalEntryId?: string | null;
+  message: string;
+}
+
+export interface AgentAssignmentAccountingResult {
+  success: boolean;
+  journalCreated: boolean;
+  eligibleAmount: number;
+  alreadyPosted: number;
+  amountPosted: number;
+  agentId?: string | null;
+  journalEntryId?: string | null;
+  message: string;
+}
+
+export interface WorkerBackOutDto {
+  contractId: string;
+  workerId: string;
+  reason?: string | null;
+}
+
+export interface ChangeMediationWorkerDto {
+  contractId: string;
+  oldWorkerId?: string | null;
+  newWorkerId: string;
+  newAgentId?: string | null;
+  reason?: string | null;
+}
+
+export interface ChangeMediationWorkerResult {
+  success: boolean;
+  backOut?: AgentBackOutAccountingResult | null;
+  assignment?: AgentAssignmentAccountingResult | null;
+  newWorkerId?: string | null;
+  newAgentId?: string | null;
+  message: string;
+}
+
+export interface EndWorkerServiceResult {
+  message?: string | null;
+  accounting?: AgentBackOutAccountingResult | null;
+}
+
+export interface AssignWorkerResult {
+  message?: string | null;
+  workerId?: string | null;
+  pendingWorkerPassportNumber?: string | null;
+  isExternal?: boolean | null;
+  accounting?: AgentAssignmentAccountingResult | null;
+}
+
+// ==================== Arrival Tracking Report ====================
+
+export interface ArrivalReportQuery {
+  pageNumber?: number;
+  pageSize?: number;
+  branchId?: string;
+  includeSubBranches?: boolean;
+  search?: string;
+  createdDateFrom?: string;
+  createdDateTo?: string;
+  contractNumber?: number;
+  customerName?: string;
+  mobileNumber?: string;
+  email?: string;
+  nationalityId?: string;
+  agentId?: string;
+  idNumber?: string;
+  visaNumber?: string;
+  arrivalDate?: string;
+  arrivalDateFrom?: string;
+  arrivalDateTo?: string;
+  manualContractStatus?: number;
+  contractReplacementStatus?: boolean;
+  guaranteeStatus?: number;
+  visaDate?: string;
+  visaDateFrom?: string;
+  visaDateTo?: string;
+  jobId?: string;
+  religion?: 1 | 2 | 3;
+}
+
+export interface ArrivalReportItem {
+  contractId: string;
+  contractNumber?: number | null;
+  contractStatusId?: number | null;
+  contractStatusNameAr?: string | null;
+  contractStatusNameEn?: string | null;
+  manualContractStatus?: number | null;
+  isReplacement?: boolean | null;
+  contractReplacementStatusAr?: string | null;
+  contractReplacementStatusEn?: string | null;
+  contractType?: number | null;
+  contractTypeName?: string | null;
+  customerId?: string | null;
+  customerName?: string | null;
+  customerMobile?: string | null;
+  customerNationalId?: string | null;
+  customerEmail?: string | null;
+  workerId?: string | null;
+  workerName?: string | null;
+  nationalityId?: string | null;
+  nationalityAr?: string | null;
+  nationalityEn?: string | null;
+  passportNumber?: string | null;
+  idNumber?: string | null;
+  visaNumber?: string | null;
+  jobId?: string | null;
+  jobNameAr?: string | null;
+  jobNameEn?: string | null;
+  religion?: number | null;
+  religionNameAr?: string | null;
+  agentId?: string | null;
+  agentName?: string | null;
+  hasArrived?: boolean;
+  arrivalStatusAr?: string | null;
+  arrivalStatusEn?: string | null;
+  arrivalDate?: string | null;
+  arrivalTime?: string | null;
+  arrivalDestinationId?: number | null;
+  arrivalDestination?: string | null;
+  flightNumber?: string | null;
+  tripNumber?: string | null;
+  arrivalNotes?: string | null;
+  guaranteeStatusId?: number | null;
+  guaranteeStatusAr?: string | null;
+  guaranteeStatusEn?: string | null;
+  hasWarrantyReturn?: boolean;
+  evaluation?: string | null;
+  visaDate?: string | null;
+  createdAt?: string | null;
+}
+
+export interface ArrivalReportPage {
+  items: ArrivalReportItem[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
 /**
  * POST /api/Mediation/MediationContract/set-pending-worker-passport
  * For a worker not yet in the system. Fails if the contract already has an

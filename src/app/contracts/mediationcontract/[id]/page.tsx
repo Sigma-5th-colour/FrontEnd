@@ -19,6 +19,7 @@ import {
   useRecordMediationPayment,
 } from '@/hooks/api/useMediationContracts';
 import { useAvailableMediationWorkers } from '@/hooks/api/useWorkers';
+import { useAgents } from '@/hooks/api/useAgents';
 import { useGeneralVoucherPaymentMethods } from '@/hooks/api/useGeneralVouchers';
 import RecordDetailShell from '@/components/record-detail/RecordDetailShell';
 import MediationContractDetailView from '../_components/MediationContractDetailView';
@@ -31,6 +32,8 @@ import {
   IdcardOutlined,
   UserAddOutlined,
   UserDeleteOutlined,
+  RollbackOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 
 const LIST_ROUTE = '/contracts/mediationcontract';
@@ -51,24 +54,32 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
   const {
     assignWorker,
     endWorkerService,
+    previewBackOut,
+    backOutWorker,
+    changeWorker,
     isAssigningWorker,
     isEndingWorkerService,
+    isBackingOutWorker,
+    isChangingWorker,
   } = useMediationContracts({ enabled: false });
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showAssignWorkerModal, setShowAssignWorkerModal] = useState(false);
+  const [showChangeWorkerModal, setShowChangeWorkerModal] = useState(false);
   const [showEndServiceModal, setShowEndServiceModal] = useState(false);
   const [assignPassportSearch, setAssignPassportSearch] = useState('');
   const [assignPassportDebounced, setAssignPassportDebounced] = useState('');
   const [paymentForm] = Form.useForm();
   const [assignWorkerForm] = Form.useForm();
+  const [changeWorkerForm] = Form.useForm();
   const [endServiceForm] = Form.useForm();
   React.useEffect(() => {
     const timeoutId = setTimeout(() => setAssignPassportDebounced(assignPassportSearch.trim()), 400);
     return () => clearTimeout(timeoutId);
   }, [assignPassportSearch]);
   const { data: assignWorkers = [], isLoading: isLoadingAssignWorkers } =
-    useAvailableMediationWorkers(assignPassportDebounced, showAssignWorkerModal);
+    useAvailableMediationWorkers(assignPassportDebounced, showAssignWorkerModal || showChangeWorkerModal);
+  const { data: agents = [] } = useAgents(showChangeWorkerModal);
 
   const t = {
     contracts: isRtl ? 'عقود الاستقدام' : 'Mediation Contracts',
@@ -97,6 +108,14 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
     noOutstandingBalance: isRtl ? 'لا يوجد رصيد متبقٍ للسداد' : 'No outstanding balance remains',
     notes: isRtl ? 'ملاحظات' : 'Notes',
     assignWorker: isRtl ? 'إسناد عامل جديد' : 'Assign New Worker',
+    changeWorker: isRtl ? 'تغيير العامل' : 'Change Worker',
+    backOutWorker: isRtl ? 'باك أوت العامل' : 'Back Out Worker',
+    backOutConfirm: isRtl ? 'تأكيد الباك أوت' : 'Confirm Worker Back-out',
+    changeWorkerHint: isRtl
+      ? 'سيتم عكس قيد الوكيل السابق (إن وُجد) ثم إسناد العامل الجديد في معاملة واحدة.'
+      : 'Any prior agent entry will be reversed, then the new worker will be assigned in one transaction.',
+    changeReason: isRtl ? 'سبب التغيير (اختياري)' : 'Change reason (optional)',
+    newAgent: isRtl ? 'وكيل جديد (اختياري)' : 'New agent (optional)',
     endWorkerService: isRtl ? 'إنهاء خدمة العامل' : 'End Worker Service',
     selectWorkerPassport: isRtl ? 'ابحث عن عامل برقم الجواز' : 'Search worker by passport',
     workerPassportNumber: isRtl ? 'رقم الجواز' : 'Passport Number',
@@ -252,6 +271,62 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
     }
   };
 
+  const handleBackOutWorker = async () => {
+    if (!contractGates.canUpdate || !contract?.workerId) return;
+    try {
+      const preview = await previewBackOut(id, String(contract.workerId));
+      Modal.confirm({
+        title: t.backOutConfirm,
+        icon: <RollbackOutlined />,
+        content: (
+          <div>
+            <p>{preview.message}</p>
+            {preview.willCreateReversal && (
+              <p style={{ fontWeight: 600 }}>
+                {isRtl ? 'مبلغ قيد العكس: ' : 'Reversal amount: '}
+                {fmtCurrency(preview.reversalAmount)}
+                {preview.agentName ? ` — ${preview.agentName}` : ''}
+              </p>
+            )}
+          </div>
+        ),
+        okText: t.backOutWorker,
+        okButtonProps: { danger: true, loading: isBackingOutWorker },
+        cancelText: t.cancel,
+        onOk: async () => {
+          await backOutWorker({
+            contractId: id,
+            workerId: String(contract.workerId),
+            reason: isRtl ? 'باك أوت من شاشة متابعة العقد' : 'Back-out from contract tracking',
+          });
+          await refetch();
+        },
+      });
+    } catch {
+      // API errors are surfaced by the request hook.
+    }
+  };
+
+  const handleChangeWorker = async () => {
+    if (!contractGates.canUpdate || !contract?.workerId) return;
+    try {
+      const values = await changeWorkerForm.validateFields();
+      await changeWorker({
+        contractId: id,
+        oldWorkerId: String(contract.workerId),
+        newWorkerId: String(values.workerId),
+        newAgentId: values.newAgentId ? String(values.newAgentId) : null,
+        reason: values.reason || null,
+      });
+      setShowChangeWorkerModal(false);
+      changeWorkerForm.resetFields();
+      setAssignPassportSearch('');
+      refetch();
+    } catch {
+      // Validation and API errors are already presented to the user.
+    }
+  };
+
   const canRecordPayment =
     !!contract && contract.paymentStatusCode !== 2 && outstandingBalance > 0 && contractGates.canUpdate;
 
@@ -298,6 +373,12 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
               endServiceForm.resetFields();
               setShowEndServiceModal(true);
             }}
+            onChangeWorker={() => {
+              changeWorkerForm.resetFields();
+              setAssignPassportSearch('');
+              setShowChangeWorkerModal(true);
+            }}
+            onBackOutWorker={handleBackOutWorker}
           />
         )}
       </RecordDetailShell>
@@ -410,6 +491,72 @@ export default function MediationContractDetailPage({ params }: { params: { id: 
           </div>
           <Form.Item name="notes" label={t.notes}>
             <Input.TextArea rows={3} maxLength={1000} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* ========== CHANGE WORKER MODAL ========== */}
+      <Modal
+        title={
+          <span>
+            <SwapOutlined style={{ marginInlineEnd: 8 }} />
+            {t.changeWorker}
+          </span>
+        }
+        open={showChangeWorkerModal && contractGates.canUpdate}
+        onCancel={() => {
+          setShowChangeWorkerModal(false);
+          changeWorkerForm.resetFields();
+          setAssignPassportSearch('');
+        }}
+        onOk={contractGates.canUpdate ? handleChangeWorker : undefined}
+        okText={t.save}
+        cancelText={t.cancel}
+        confirmLoading={isChangingWorker}
+      >
+        <p style={{ color: '#8c8c8c', marginBottom: 16 }}>{t.changeWorkerHint}</p>
+        <Form form={changeWorkerForm} layout="vertical">
+          <Form.Item name="workerId" label={t.changeWorker} rules={[{ required: true, message: t.required }]}>
+            <Select
+              showSearch
+              loading={isLoadingAssignWorkers}
+              placeholder={t.selectWorkerPassport}
+              filterOption={false}
+              onSearch={setAssignPassportSearch}
+              searchValue={assignPassportSearch}
+              notFoundContent={
+                isLoadingAssignWorkers
+                  ? (isRtl ? 'جارٍ البحث...' : 'Searching...')
+                  : assignPassportDebounced
+                  ? (isRtl ? 'لا يوجد عامل متاح مطابق' : 'No matching available worker')
+                  : (isRtl ? 'اكتب رقم الجواز للبحث' : 'Type a passport number to search')
+              }
+              options={(assignWorkers as Worker[]).map((worker) => ({
+                value: String(worker.id),
+                label:
+                  ((isRtl ? worker.fullNameAr : worker.fullNameEn || worker.fullNameAr) || `#${worker.id}`) +
+                  (worker.passportNo ? ` — ${worker.passportNo}` : ''),
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="newAgentId" label={t.newAgent}>
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              placeholder={t.newAgent}
+              options={agents.map((agent) => ({
+                value: String(agent.id),
+                label:
+                  (isRtl ? agent.agentNameAr : agent.agentNameEn) ||
+                  agent.agentNameAr ||
+                  agent.agentNameEn ||
+                  `#${agent.id}`,
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="reason" label={t.changeReason}>
+            <Input.TextArea rows={3} maxLength={500} />
           </Form.Item>
         </Form>
       </Modal>

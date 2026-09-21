@@ -243,6 +243,17 @@ export default function Sidebar({
         },
       ],
     },
+    {
+      key: 'reports',
+      icon: <FileTextOutlined />,
+      label: language === 'ar' ? 'التقارير' : 'Reports',
+      children: [
+        {
+          key: '/reports/arrival',
+          label: language === 'ar' ? 'تقرير متابعة الوصول' : 'Arrival Tracking Report',
+        },
+      ],
+    },
     // {
     //   key: 'recruitment',
     //   icon: <UserAddOutlined />,

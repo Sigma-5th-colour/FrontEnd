@@ -80,6 +80,9 @@ export const PAGE_REGISTRY: PageDef[] = [
   { key: '/contracts/operation/collection-renewal', labelAr: 'التحصيل والتجديد', labelEn: 'Collection & Renewal', group: 'contracts', groupAr: 'العقود', groupEn: 'Contracts' },
   { key: '/contracts/operation/rent-prices-offers', labelAr: 'أسعار وعروض التشغيل', labelEn: 'Rent Prices & Offers', group: 'contracts', groupAr: 'العقود', groupEn: 'Contracts' },
 
+  // ── Reports ──
+  { key: '/reports/arrival', labelAr: 'تقرير متابعة الوصول', labelEn: 'Arrival Tracking Report', group: 'reports', groupAr: 'التقارير', groupEn: 'Reports' },
+
   // ── Agents ──
   { key: '/agents', labelAr: 'جميع الوكلاء', labelEn: 'All Agents', group: 'agents', groupAr: 'الوكلاء', groupEn: 'Agents' },
 

@@ -12,6 +12,13 @@ import type {
   UpdateContractStatusDto,
   EndWorkerServiceDto,
   AssignWorkerDto,
+  AgentBackOutPreview,
+  WorkerBackOutDto,
+  AgentBackOutAccountingResult,
+  ChangeMediationWorkerDto,
+  ChangeMediationWorkerResult,
+  EndWorkerServiceResult,
+  AssignWorkerResult,
   SetPendingWorkerPassportDto,
   RecruitmentRequestItem,
   CreateMediationContractPaymentDto,
@@ -351,23 +358,53 @@ export class MediationContractService {
   // ==================== Worker Assignment ====================
 
   /** POST /api/Mediation/MediationContract/end-worker-service */
-  static async endWorkerService(data: EndWorkerServiceDto): Promise<any> {
+  static async endWorkerService(data: EndWorkerServiceDto): Promise<EndWorkerServiceResult> {
     const response = await api.post(API_ENDPOINTS.MEDIATION_CONTRACT.END_WORKER_SERVICE, {
       contractId: data.contractId,
       reason: data.reason || null,
     });
-    return this.unwrap<any>(response.data);
+    return this.unwrap<EndWorkerServiceResult>(response.data);
   }
 
   /** POST /api/Mediation/MediationContract/assign-worker */
-  static async assignWorker(data: AssignWorkerDto): Promise<any> {
+  static async assignWorker(data: AssignWorkerDto): Promise<AssignWorkerResult> {
     const body: Record<string, string | null> = {
       contractId: data.contractId,
     };
     if (data.workerId) body.workerId = data.workerId;
     if (data.workerPassportNumber) body.workerPassportNumber = data.workerPassportNumber;
     const response = await api.post(API_ENDPOINTS.MEDIATION_CONTRACT.ASSIGN_WORKER, body);
-    return this.unwrap<any>(response.data);
+    return this.unwrap<AssignWorkerResult>(response.data);
+  }
+
+  /** GET /api/Mediation/MediationContract/back-out/preview */
+  static async previewBackOut(contractId: string, workerId: string): Promise<AgentBackOutPreview> {
+    const response = await api.get<any>(API_ENDPOINTS.MEDIATION_CONTRACT.BACK_OUT_PREVIEW, {
+      params: { contractId, workerId },
+    });
+    return this.unwrap<AgentBackOutPreview>(response.data);
+  }
+
+  /** POST /api/Mediation/MediationContract/back-out */
+  static async backOutWorker(data: WorkerBackOutDto): Promise<AgentBackOutAccountingResult> {
+    const response = await api.post(API_ENDPOINTS.MEDIATION_CONTRACT.BACK_OUT, {
+      contractId: data.contractId,
+      workerId: data.workerId,
+      reason: data.reason || null,
+    });
+    return this.unwrap<AgentBackOutAccountingResult>(response.data);
+  }
+
+  /** POST /api/Mediation/MediationContract/change-worker */
+  static async changeWorker(data: ChangeMediationWorkerDto): Promise<ChangeMediationWorkerResult> {
+    const response = await api.post(API_ENDPOINTS.MEDIATION_CONTRACT.CHANGE_WORKER, {
+      contractId: data.contractId,
+      oldWorkerId: data.oldWorkerId || null,
+      newWorkerId: data.newWorkerId,
+      newAgentId: data.newAgentId || null,
+      reason: data.reason || null,
+    });
+    return this.unwrap<ChangeMediationWorkerResult>(response.data);
   }
 
   /**

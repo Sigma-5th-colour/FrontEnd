@@ -71,6 +71,7 @@ export const DEFAULT_ROLE_PAGE_MATRIX: PermissionMatrix = {
   '/contracts/operation/rent': customerService,
   '/contracts/operation/collection-renewal': customerService,
   '/contracts/operation/rent-prices-offers': customerService,
+  '/reports/arrival': customerServiceAndFollowUp,
 
   '/agents': [...FOLLOW_UP_ROLES, ...AGENT_ROLES],
 

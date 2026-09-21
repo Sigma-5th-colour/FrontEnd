@@ -220,6 +220,10 @@ export const API_ENDPOINTS = {
     END_WORKER_SERVICE: '/api/Mediation/MediationContract/end-worker-service',
     // POST { contractId, workerId, workerPassportNumber } — assigns a new worker
     ASSIGN_WORKER: '/api/Mediation/MediationContract/assign-worker',
+    // GET/POST — agent-accounting-aware worker back-out and replacement.
+    BACK_OUT_PREVIEW: '/api/Mediation/MediationContract/back-out/preview',
+    BACK_OUT: '/api/Mediation/MediationContract/back-out',
+    CHANGE_WORKER: '/api/Mediation/MediationContract/change-worker',
     // POST { contractId, workerPassportNumber } — worker not yet in the system
     SET_PENDING_WORKER_PASSPORT: '/api/Mediation/MediationContract/set-pending-worker-passport',
     CONTRACT_CANCEL: '/api/Mediation/MediationContract/cancel',
@@ -232,6 +236,11 @@ export const API_ENDPOINTS = {
     WARRANTY_RETURN: '/api/Mediation/MediationContract/warranty-return',
     STATUS_HISTORY: (contractId: string) =>
       `/api/Mediation/MediationContract/status-history/${contractId}`,
+  },
+
+  // ─── Arrival Tracking report — brokerage (mediation) contracts ───────────
+  ARRIVAL_REPORT: {
+    BROKERAGE: '/api/arrival-report/brokerage',
   },
 
   // Contract Creation Requirements

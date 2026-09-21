@@ -18,6 +18,8 @@ import {
   PaperClipOutlined,
   UserAddOutlined,
   UserDeleteOutlined,
+  RollbackOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { resolveImageUrl } from '@/utils/image';
 import { ARRIVAL_DESTINATIONS, CANCEL_BY, getEnumLabel } from '@/constants/enums';
@@ -31,6 +33,8 @@ export interface MediationContractDetailViewProps {
   canUpdateWorker?: boolean;
   onAddWorker?: () => void;
   onEndWorkerService?: () => void;
+  onChangeWorker?: () => void;
+  onBackOutWorker?: () => void;
 }
 
 export default function MediationContractDetailView({
@@ -39,6 +43,8 @@ export default function MediationContractDetailView({
   canUpdateWorker = false,
   onAddWorker,
   onEndWorkerService,
+  onChangeWorker,
+  onBackOutWorker,
 }: MediationContractDetailViewProps) {
   const fmtCurrency = (v: number | null | undefined) => formatCurrency(v, language);
   const fmtDate = (v: string | null | undefined) => formatDate(v, language);
@@ -182,11 +188,23 @@ export default function MediationContractDetailView({
                 )}
               </Descriptions>
               {canUpdateWorker && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBlockStart: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap', marginBlockStart: 12 }}>
                   {hasRegisteredWorker || externalPassport ? (
-                    <Button danger icon={<UserDeleteOutlined />} onClick={onEndWorkerService}>
-                      {language === 'ar' ? 'إنهاء خدمة العامل' : 'End Worker Service'}
-                    </Button>
+                    <>
+                      {hasRegisteredWorker && (
+                        <>
+                          <Button icon={<SwapOutlined />} onClick={onChangeWorker}>
+                            {language === 'ar' ? 'تغيير العامل' : 'Change Worker'}
+                          </Button>
+                          <Button danger icon={<RollbackOutlined />} onClick={onBackOutWorker}>
+                            {language === 'ar' ? 'باك أوت' : 'Back Out'}
+                          </Button>
+                        </>
+                      )}
+                      <Button danger icon={<UserDeleteOutlined />} onClick={onEndWorkerService}>
+                        {language === 'ar' ? 'إنهاء خدمة العامل' : 'End Worker Service'}
+                      </Button>
+                    </>
                   ) : (
                     <Button type="primary" icon={<UserAddOutlined />} onClick={onAddWorker}>
                       {language === 'ar' ? 'إضافة عامل' : 'Add Worker'}

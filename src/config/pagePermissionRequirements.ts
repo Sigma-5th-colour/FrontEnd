@@ -54,6 +54,7 @@ export const PAGE_PERMISSION_REQUIREMENTS: Record<string, readonly string[]> = {
   '/contracts/operation/rent': [APP_PERMISSIONS.CONTRACTS_VIEW],
   '/contracts/operation/collection-renewal': [APP_PERMISSIONS.CONTRACTS_VIEW],
   '/contracts/operation/rent-prices-offers': [APP_PERMISSIONS.CONTRACTS_VIEW],
+  '/reports/arrival': [APP_PERMISSIONS.CONTRACTS_VIEW, APP_PERMISSIONS.CONTRACTS_STATUS_VIEW],
 
   '/agents': [APP_PERMISSIONS.AGENTS_VIEW, APP_PERMISSIONS.AGENTS_OWN_DATA_VIEW],
 

@@ -18,6 +18,8 @@ import type {
   UpdateContractStatusDto,
   EndWorkerServiceDto,
   AssignWorkerDto,
+  WorkerBackOutDto,
+  ChangeMediationWorkerDto,
   SetPendingWorkerPassportDto,
   CreateMediationContractPaymentDto,
 } from '@/types/api.types';
@@ -263,9 +265,10 @@ export function useMediationContracts(params?: MediationContractListParams) {
 
   const endWorkerServiceMutation = useMutation({
     mutationFn: (data: EndWorkerServiceDto) => MediationContractService.endWorkerService(data),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success('تم إنهاء خدمة العامل / Worker service ended');
+      message.success(result.message || 'تم إنهاء خدمة العامل / Worker service ended');
+      if (result.accounting?.message) message.success(result.accounting.message);
     },
     onError: (error: any) => {
       message.error(
@@ -276,14 +279,43 @@ export function useMediationContracts(params?: MediationContractListParams) {
 
   const assignWorkerMutation = useMutation({
     mutationFn: (data: AssignWorkerDto) => MediationContractService.assignWorker(data),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      message.success('تم إسناد العامل بنجاح / Worker assigned successfully');
+      message.success(result.message || 'تم إسناد العامل بنجاح / Worker assigned successfully');
+      if (result.accounting?.journalCreated && result.accounting.message) {
+        message.success(result.accounting.message);
+      }
     },
     onError: (error: any) => {
       message.error(
         getApiErrorMessage(error, 'فشل إسناد العامل / Failed to assign worker')
       );
+    },
+  });
+
+  const backOutWorkerMutation = useMutation({
+    mutationFn: (data: WorkerBackOutDto) => MediationContractService.backOutWorker(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      message.success(result.message || 'تم تنفيذ الباك أوت / Worker back-out completed');
+    },
+    onError: (error: any) => {
+      message.error(getApiErrorMessage(error, 'فشل تنفيذ الباك أوت / Failed to back out worker'));
+    },
+  });
+
+  const changeWorkerMutation = useMutation({
+    mutationFn: (data: ChangeMediationWorkerDto) => MediationContractService.changeWorker(data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
+      message.success(result.message || 'تم تغيير العامل بنجاح / Worker changed successfully');
+      if (result.backOut?.message) message.success(result.backOut.message);
+      if (result.assignment?.journalCreated && result.assignment.message) {
+        message.success(result.assignment.message);
+      }
+    },
+    onError: (error: any) => {
+      message.error(getApiErrorMessage(error, 'فشل تغيير العامل / Failed to change worker'));
     },
   });
 
@@ -316,6 +348,9 @@ export function useMediationContracts(params?: MediationContractListParams) {
     updateContractStatus: updateStatusMutation.mutateAsync,
     endWorkerService: endWorkerServiceMutation.mutateAsync,
     assignWorker: assignWorkerMutation.mutateAsync,
+    previewBackOut: MediationContractService.previewBackOut,
+    backOutWorker: backOutWorkerMutation.mutateAsync,
+    changeWorker: changeWorkerMutation.mutateAsync,
     setPendingWorkerPassport: setPendingWorkerPassportMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isCancelling: cancelMutation.isPending,
@@ -326,6 +361,8 @@ export function useMediationContracts(params?: MediationContractListParams) {
     isUpdatingStatus: updateStatusMutation.isPending,
     isEndingWorkerService: endWorkerServiceMutation.isPending,
     isAssigningWorker: assignWorkerMutation.isPending,
+    isBackingOutWorker: backOutWorkerMutation.isPending,
+    isChangingWorker: changeWorkerMutation.isPending,
     isSettingPendingWorkerPassport: setPendingWorkerPassportMutation.isPending,
   };
 }

@@ -61,6 +61,9 @@ const ROUTE_TITLES: Array<[string, Title]> = [
   ['/contracts/mediationcontract', { ar: 'عقود الاستقدام', en: 'Mediation Contracts' }],
   ['/contracts/mediationrequests', { ar: 'طلبات عقود التوسط', en: 'Mediation Requests' }],
 
+  // Reports
+  ['/reports/arrival', { ar: 'تقرير متابعة الوصول', en: 'Arrival Tracking Report' }],
+
   // Contracts — operation
   ['/contracts/operation/collection-renewal', { ar: 'التحصيل والتجديد', en: 'Collection & Renewal' }],
   ['/contracts/operation/rent-prices-offers', { ar: 'أسعار وعروض التشغيل', en: 'Rent Prices & Offers' }],
