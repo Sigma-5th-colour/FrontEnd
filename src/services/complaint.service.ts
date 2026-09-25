@@ -172,6 +172,8 @@ export class ComplaintService {
     branchId?: string;
     includeSubBranches?: boolean;
     status?: number;
+    source?: number;
+    workerLocation?: number;
     customerId?: string;
     workerId?: string;
     relatedContractType?: number;

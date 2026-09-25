@@ -9,6 +9,7 @@ import {
   RollbackOutlined,
   CheckCircleFilled,
   CloseCircleFilled,
+  PrinterOutlined,
 } from '@ant-design/icons';
 import {
   useJournalEntryDetail,
@@ -25,6 +26,7 @@ import {
 } from '@/types/journal-entry.types';
 import { GoToSourceButton } from './GoToSourceButton';
 import { useAccountingActionGates } from '@/hooks/useActionPermissionGates';
+import { useRouter } from 'next/navigation';
 import styles from '../JournalEntries.module.css';
 
 interface EntryDetailDrawerProps {
@@ -38,6 +40,7 @@ export function EntryDetailDrawer({ open, entryId, onClose, onEdit }: EntryDetai
   const t = (ar: string, en: string) => ar + ' / ' + en;
   const language = useAuthStore((state) => state.language);
   const isAr = language !== 'en';
+  const router = useRouter();
 
   const { data: entry, isLoading } = useJournalEntryDetail(open ? entryId : null);
   const { deleteEntry, postEntry, unpostEntry, isDeleting, isPosting, isUnposting } =
@@ -161,6 +164,12 @@ export function EntryDetailDrawer({ open, entryId, onClose, onEdit }: EntryDetai
                 }}
                 isAr={isAr}
               />
+              <Button
+                icon={<PrinterOutlined />}
+                onClick={() => router.push(`/accounting/journal-entries/${entry.id}/print`)}
+              >
+                {t('طباعة', 'Print')}
+              </Button>
               {canManage && isDraft ? (
                 <Tooltip
                   title={

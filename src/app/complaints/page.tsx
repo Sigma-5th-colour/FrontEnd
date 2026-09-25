@@ -53,6 +53,8 @@ import { useCustomers } from '@/hooks/api/useCustomers';
 import { useWorkers } from '@/hooks/api/useWorkers';
 import { useAgents } from '@/hooks/api/useAgents';
 import { useEmploymentOperatingContracts } from '@/hooks/api/useEmploymentOperatingContracts';
+import { useMediationContracts } from '@/hooks/api/useMediationContracts';
+import { useTransferContracts } from '@/hooks/api/useTransferContracts';
 import {
   COMPLAINT_SOURCE,
   COMPLAINT_PRIORITY,
@@ -272,6 +274,7 @@ interface ComplaintFormProps {
 
 function ComplaintForm({ form, language, isArabic, t }: ComplaintFormProps) {
   const sourceValue = Form.useWatch('source', form);
+  const relatedContractType = Form.useWatch('relatedContractType', form);
 
   const showCustomer = sourceValue === CUSTOMER_FROM;
   const showWorker = sourceValue === WORKER_FROM;
@@ -284,7 +287,18 @@ function ComplaintForm({ form, language, isArabic, t }: ComplaintFormProps) {
   const { customers = [], isLoading: loadingCustomers } = useCustomers();
   const { data: workers = [], isLoading: loadingWorkers } = useWorkers();
   const { data: agents = [], isLoading: loadingAgents } = useAgents();
-  const { contracts = [], isLoading: loadingContracts } = useEmploymentOperatingContracts();
+
+  const { contracts: mediationContracts = [], isLoading: loadingMediation } = useMediationContracts({
+    pageNumber: 1,
+    pageSize: 9999,
+    enabled: relatedContractType === 1,
+  });
+  const { contracts: operatingContracts = [], isLoading: loadingOperating } =
+    useEmploymentOperatingContracts();
+  const { data: transferPage, isLoading: loadingTransfer } = useTransferContracts({
+    pageNumber: 1,
+    pageSize: 9999,
+  });
 
   // Build select options
   const customerOptions = (customers as any[]).map((c) => ({
@@ -302,13 +316,27 @@ function ComplaintForm({ form, language, isArabic, t }: ComplaintFormProps) {
     label: (isArabic ? a.agentName : a.agentName) || a.agentName || a.agentName || `#${a.id}`,
   }));
 
-  const contractsArray: any[] = Array.isArray(contracts)
-    ? contracts
-    : Array.isArray((contracts as any)?.data)
-      ? (contracts as any).data
-      : [];
+  const contractsForType: any[] = useMemo(() => {
+    if (relatedContractType === 1) {
+      return Array.isArray(mediationContracts) ? mediationContracts : [];
+    }
+    if (relatedContractType === 3) {
+      return Array.isArray(transferPage?.items) ? transferPage.items : [];
+    }
+    // Default / Operating (2)
+    if (Array.isArray(operatingContracts)) return operatingContracts;
+    if (Array.isArray((operatingContracts as any)?.data)) return (operatingContracts as any).data;
+    return [];
+  }, [relatedContractType, mediationContracts, operatingContracts, transferPage]);
 
-  const contractOptions = contractsArray
+  const loadingContracts =
+    relatedContractType === 1
+      ? loadingMediation
+      : relatedContractType === 3
+        ? loadingTransfer
+        : loadingOperating;
+
+  const contractOptions = contractsForType
     .map((c) => ({
       value: c.id ?? c.Id ?? c.ID,
       label: getContractOptionLabel(c, isArabic),
@@ -426,7 +454,7 @@ function ComplaintForm({ form, language, isArabic, t }: ComplaintFormProps) {
           </Col>
         )}
 
-        {/* Contract Type + Contract – visible for Agent/Embassy/Ministry/Contract */}
+        {/* Contract Type + Contract – visible for all sources when source is set */}
         {showContract && (
           <>
             <Col xs={24} md={12}>
@@ -435,6 +463,7 @@ function ComplaintForm({ form, language, isArabic, t }: ComplaintFormProps) {
                   placeholder={t('contractType')}
                   options={toSelectOptions(CONTRACT_TYPE, language)}
                   allowClear
+                  onChange={() => form.setFieldsValue({ relatedContractId: undefined })}
                 />
               </Form.Item>
             </Col>
@@ -444,7 +473,16 @@ function ComplaintForm({ form, language, isArabic, t }: ComplaintFormProps) {
                   showSearch
                   allowClear
                   loading={loadingContracts}
-                  placeholder={isArabic ? 'اختر العقد' : 'Select contract'}
+                  disabled={!relatedContractType}
+                  placeholder={
+                    relatedContractType
+                      ? isArabic
+                        ? 'اختر العقد'
+                        : 'Select contract'
+                      : isArabic
+                        ? 'اختر نوع العقد أولاً'
+                        : 'Select contract type first'
+                  }
                   options={contractOptions}
                   filterOption={(input, option) =>
                     String(option?.label ?? '')
@@ -494,9 +532,9 @@ export default function ComplaintsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [contractTypeFilter, setContractTypeFilter] = useState<string>('all');
+  const [contractIdFilter, setContractIdFilter] = useState<string | undefined>(undefined);
   const [complaintFromFilter, setComplaintFromFilter] = useState<string>('all');
   const [workerLocationFilter, setWorkerLocationFilter] = useState<string>('all');
-  const [contractNumberFilter, setContractNumberFilter] = useState<string>('');
   const [branchId, setBranchId] = useState<string | undefined>(undefined);
   const [includeSubBranches, setIncludeSubBranches] = useState(true);
   const [updatedDateRange, setUpdatedDateRange] = useState<
@@ -505,13 +543,23 @@ export default function ComplaintsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // API hooks — branch scoping + updated-date range are applied server-side;
-  // other filters below are refined client-side on the returned page.
+  const relatedContractTypeParam =
+    contractTypeFilter !== 'all' ? Number(contractTypeFilter) : undefined;
+
+  // API hooks — contract type/id, status, source, worker location, search, branch,
+  // and updated-date range are applied server-side.
   const { data: complaintsData, isLoading } = useComplaints({
     pageNumber: currentPage,
     pageSize,
+    search: searchTerm || undefined,
     branchId,
     includeSubBranches: branchId ? includeSubBranches : undefined,
+    status: statusFilter !== 'all' ? Number(statusFilter) : undefined,
+    source: complaintFromFilter !== 'all' ? Number(complaintFromFilter) : undefined,
+    workerLocation:
+      workerLocationFilter !== 'all' ? Number(workerLocationFilter) : undefined,
+    relatedContractType: relatedContractTypeParam,
+    relatedContractId: contractIdFilter,
     updatedDateFrom: updatedDateRange[0],
     updatedDateTo: updatedDateRange[1],
   });
@@ -519,7 +567,17 @@ export default function ComplaintsPage() {
   const serverTotal = complaintsData?.total ?? 0;
   const { customers = [] } = useCustomers();
   const { data: workers = [] } = useWorkers();
-  const { contracts = [] } = useEmploymentOperatingContracts();
+
+  const { contracts: mediationContracts = [] } = useMediationContracts({
+    pageNumber: 1,
+    pageSize: 9999,
+    enabled: relatedContractTypeParam === 1,
+  });
+  const { contracts: operatingContracts = [] } = useEmploymentOperatingContracts();
+  const { data: transferPage } = useTransferContracts({
+    pageNumber: 1,
+    pageSize: 9999,
+  });
   const createMutation = useCreateComplaint();
   const finishMutation = useFinishComplaint();
   const toggleHoldMutation = useToggleHoldComplaint();
@@ -575,13 +633,19 @@ export default function ComplaintsPage() {
 
   const contractNameById = useMemo(() => {
     const map = new Map<string, { customerName: string; workerName: string; contractNumber: string }>();
-    const contractsArray: Record<string, unknown>[] = Array.isArray(contracts)
-      ? contracts as unknown as Record<string, unknown>[]
-      : Array.isArray((contracts as any)?.data)
-        ? (contracts as any).data
-        : [];
+    const allContracts: Record<string, unknown>[] = [
+      ...(Array.isArray(mediationContracts) ? (mediationContracts as unknown as Record<string, unknown>[]) : []),
+      ...(Array.isArray(operatingContracts)
+        ? (operatingContracts as unknown as Record<string, unknown>[])
+        : Array.isArray((operatingContracts as any)?.data)
+          ? (operatingContracts as any).data
+          : []),
+      ...(Array.isArray(transferPage?.items)
+        ? (transferPage!.items as unknown as Record<string, unknown>[])
+        : []),
+    ];
 
-    contractsArray.forEach((contract) => {
+    allContracts.forEach((contract) => {
       const id = normalizeIdentifierPart(contract.id ?? contract.Id ?? contract.ID);
       if (!id) return;
 
@@ -598,7 +662,53 @@ export default function ComplaintsPage() {
     });
 
     return map;
-  }, [contracts, isArabic]);
+  }, [mediationContracts, operatingContracts, transferPage, isArabic]);
+
+  const filterContractOptions = useMemo(() => {
+    let list: Record<string, unknown>[] = [];
+    if (relatedContractTypeParam === 1) {
+      list = Array.isArray(mediationContracts)
+        ? (mediationContracts as unknown as Record<string, unknown>[])
+        : [];
+    } else if (relatedContractTypeParam === 3) {
+      list = Array.isArray(transferPage?.items)
+        ? (transferPage!.items as unknown as Record<string, unknown>[])
+        : [];
+    } else if (relatedContractTypeParam === 2) {
+      list = Array.isArray(operatingContracts)
+        ? (operatingContracts as unknown as Record<string, unknown>[])
+        : Array.isArray((operatingContracts as any)?.data)
+          ? (operatingContracts as any).data
+          : [];
+    } else {
+      list = [
+        ...(Array.isArray(mediationContracts)
+          ? (mediationContracts as unknown as Record<string, unknown>[])
+          : []),
+        ...(Array.isArray(operatingContracts)
+          ? (operatingContracts as unknown as Record<string, unknown>[])
+          : Array.isArray((operatingContracts as any)?.data)
+            ? (operatingContracts as any).data
+            : []),
+        ...(Array.isArray(transferPage?.items)
+          ? (transferPage!.items as unknown as Record<string, unknown>[])
+          : []),
+      ];
+    }
+
+    return list
+      .map((c) => ({
+        value: String(c.id ?? c.Id ?? c.ID ?? ''),
+        label: getContractOptionLabel(c, isArabic),
+      }))
+      .filter((o) => o.value);
+  }, [
+    relatedContractTypeParam,
+    mediationContracts,
+    operatingContracts,
+    transferPage,
+    isArabic,
+  ]);
 
   const getResolvedCustomerName = (complaint: Complaint): string => {
     const complaintName = normalizeIdentifierPart(complaint.customerName);
@@ -767,80 +877,18 @@ export default function ComplaintsPage() {
     return translations[language][key] || key;
   };
 
-  // Filtered data
-  const filteredComplaints = useMemo(() => {
-    return complaints.filter((complaint) => {
-      const customerName =
-        normalizeIdentifierPart(complaint.customerName) ||
-        customerNameById.get(normalizeIdentifierPart(complaint.customerId)) ||
-        contractNameById.get(normalizeIdentifierPart(complaint.relatedContractId))?.customerName ||
-        '';
-      const workerName =
-        normalizeIdentifierPart(complaint.workerName) ||
-        workerNameById.get(normalizeIdentifierPart(complaint.workerId)) ||
-        contractNameById.get(normalizeIdentifierPart(complaint.relatedContractId))?.workerName ||
-        '';
-      const matchesSearch =
-        !searchTerm ||
-        complaint.id.toString().includes(searchTerm) ||
-        customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        workerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (complaint.notesAr || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (complaint.notesEn || '').toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === 'all' || getComplaintStatus(complaint).toString() === statusFilter;
-      const matchesContractType =
-        contractTypeFilter === 'all' ||
-        complaint.relatedContractType?.toString() === contractTypeFilter;
-      const matchesComplaintFrom =
-        complaintFromFilter === 'all' ||
-        complaint.source?.toString() === complaintFromFilter;
-      const matchesWorkerLocation =
-        workerLocationFilter === 'all' ||
-        complaint.workerLocation?.toString() === workerLocationFilter;
-
-      const resolvedContractNumber =
-        normalizeIdentifierPart(complaint.contractNumber) ||
-        contractNameById.get(normalizeIdentifierPart(complaint.relatedContractId))?.contractNumber ||
-        normalizeIdentifierPart(complaint.relatedContractId);
-      const matchesContractNumber =
-        !contractNumberFilter ||
-        resolvedContractNumber.toLowerCase().includes(contractNumberFilter.toLowerCase());
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesContractType &&
-        matchesComplaintFrom &&
-        matchesWorkerLocation &&
-        matchesContractNumber
-      );
-    });
-  }, [
-    searchTerm,
-    statusFilter,
-    contractTypeFilter,
-    complaintFromFilter,
-    workerLocationFilter,
-    contractNumberFilter,
-    complaints,
-    customerNameById,
-    workerNameById,
-    contractNameById,
-  ]);
-
-  // paginatedComplaints = filteredComplaints on the current server page
+  // Server already applies the main filters; keep list as returned.
+  const filteredComplaints = complaints;
   const paginatedComplaints = filteredComplaints;
 
   // Statistics
   const statistics = useMemo(() => {
-    const total = complaints.length;
+    const total = serverTotal;
     const open = complaints.filter((c) => getComplaintStatus(c) === 1).length;
     const pending = complaints.filter((c) => getComplaintStatus(c) === 2).length;
     const closed = complaints.filter((c) => getComplaintStatus(c) === 3).length;
     return { total, open, closed, pending };
-  }, [complaints]);
+  }, [complaints, serverTotal]);
 
   // Search + Branch are quick filters and stay untouched by Clear, matching the
   // AdvancedFilterPanel convention used app-wide. Updated Date is also a quick
@@ -850,18 +898,18 @@ export default function ComplaintsPage() {
   const activeFilterCount = [
     statusFilter !== 'all',
     contractTypeFilter !== 'all',
+    Boolean(contractIdFilter),
     complaintFromFilter !== 'all',
     workerLocationFilter !== 'all',
-    contractNumberFilter !== '',
     Boolean(updatedDateRange[0]),
   ].filter(Boolean).length;
 
   const clearFilters = () => {
     setStatusFilter('all');
     setContractTypeFilter('all');
+    setContractIdFilter(undefined);
     setComplaintFromFilter('all');
     setWorkerLocationFilter('all');
-    setContractNumberFilter('');
     setUpdatedDateRange([undefined, undefined]);
     setCurrentPage(1);
   };
@@ -1269,6 +1317,7 @@ export default function ComplaintsPage() {
               value={contractTypeFilter}
               onChange={(v) => {
                 setContractTypeFilter(v);
+                setContractIdFilter(undefined);
                 setCurrentPage(1);
               }}
               options={[
@@ -1278,6 +1327,35 @@ export default function ComplaintsPage() {
                   value: o.value.toString(),
                 })),
               ]}
+            />
+          </Col>
+          <Col xs={24} md={6}>
+            <label className={styles.filterLabel}>{isArabic ? 'العقد' : 'Contract'}</label>
+            <Select
+              style={{ width: '100%' }}
+              showSearch
+              allowClear
+              value={contractIdFilter}
+              disabled={contractTypeFilter === 'all'}
+              placeholder={
+                contractTypeFilter === 'all'
+                  ? isArabic
+                    ? 'اختر نوع العقد أولاً'
+                    : 'Select contract type first'
+                  : isArabic
+                    ? 'اختر العقد'
+                    : 'Select contract'
+              }
+              onChange={(v) => {
+                setContractIdFilter(v);
+                setCurrentPage(1);
+              }}
+              options={filterContractOptions}
+              filterOption={(input, option) =>
+                String(option?.label ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
             />
           </Col>
           <Col xs={24} md={6}>
@@ -1314,21 +1392,6 @@ export default function ComplaintsPage() {
                   value: o.value.toString(),
                 })),
               ]}
-            />
-          </Col>
-          <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>
-              {isArabic ? 'رقم العقد' : 'Contract #'}
-            </label>
-            <Input
-              placeholder={isArabic ? 'بحث برقم العقد...' : 'Search by contract number...'}
-              prefix={<SearchOutlined />}
-              value={contractNumberFilter}
-              onChange={(e) => {
-                setContractNumberFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              allowClear
             />
           </Col>
         </Row>

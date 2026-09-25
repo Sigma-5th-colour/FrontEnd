@@ -8,6 +8,7 @@ import { message } from 'antd';
 import { API_CONFIG, API_ENDPOINTS } from '@/config/api.config';
 import { AUTH_TOKEN_REFRESHED_EVENT } from '@/config/authMeQuery';
 import { useAuthStore, getJwtBranchId } from '@/store/authStore';
+import { isAllBranches } from '@/lib/branch';
 import type { ApiError } from '@/types/api.types';
 export { AUTH_TOKEN_REFRESHED_EVENT } from '@/config/authMeQuery';
 
@@ -22,7 +23,10 @@ interface AxiosRequestConfigWithRetry extends AxiosRequestConfig {
  * returns it in Arabic but always includes the literal "X-Branch-Id".
  */
 function isBranchHeaderError(status: number, data: ApiError | undefined): boolean {
-  return status === 400 && !!data?.message && data.message.includes('X-Branch-Id');
+  if (status !== 400 || !data?.message || !data.message.includes('X-Branch-Id')) return false;
+  // "all" rejected on writes is expected — do not force the user back to BranchGate.
+  if (data.message.includes('=all') || data.message.toLowerCase().includes(' all ')) return false;
+  return true;
 }
 
 /**
@@ -116,6 +120,16 @@ class ApiClient {
           if (!isBranchExcludedRoute(config.url)) {
             const branchId = getCurrentBranchId();
             if (branchId) {
+              const method = (config.method || 'get').toLowerCase();
+              const isWrite = method === 'post' || method === 'put' || method === 'patch' || method === 'delete';
+              if (isWrite && isAllBranches(branchId)) {
+                const isAr = useAuthStore.getState().language === 'ar';
+                const msg = isAr
+                  ? 'لا يمكن الإنشاء أو التعديل أثناء عرض كل الفروع. اختر فرعاً محدداً أولاً.'
+                  : 'Cannot create or modify while viewing all branches. Select a specific branch first.';
+                message.warning(msg);
+                return Promise.reject(new axios.Cancel(msg));
+              }
               config.headers['X-Branch-Id'] = branchId;
             } else if (isDev) {
               console.warn('⚠️ No branchId available for X-Branch-Id header:', config.url);

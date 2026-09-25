@@ -27,11 +27,15 @@ export interface GeneralLedgerLine {
   date: string;
   entryNumber: string;
   journalEntryId?: string | null;
+  accountCode?: string;
+  accountName?: string;
   description: string;
   debit: number;
   credit: number;
   /** Running balance after this movement. */
   balanceAfter: number;
+  /** Journal entry status label when multi-account. */
+  status?: string | null;
   customerId?: string | null;
   customerName?: string | null;
   contractNumber?: number | string | null;
@@ -39,18 +43,21 @@ export interface GeneralLedgerLine {
 }
 
 export interface GeneralLedger {
-  accountId: string;
+  accountId?: string | null;
   accountCode: string;
   accountName: string;
   openingBalance: number;
   totalDebit: number;
   totalCredit: number;
   closingBalance: number;
+  /** True when no accountId was supplied (all accounts in range). */
+  isMultiAccount?: boolean;
   lines: GeneralLedgerLine[];
 }
 
 export interface GeneralLedgerQuery extends DateRangeQuery {
-  accountId: string;
+  /** Optional — omit to return movements for all accounts in the date range. */
+  accountId?: string;
 }
 
 // ==================== 3.2–3.4 Party Ledgers (Agent / Customer / Worker) ====================

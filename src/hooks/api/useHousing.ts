@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { message } from 'antd';
 import { HousingService } from '@/services/housing.service';
+import { extractApiError } from '@/lib/api/unwrap';
 import type { HousingDto } from '@/types/housing.types';
 
 const HOUSING_KEY = 'housing';
@@ -37,8 +38,8 @@ export function useHousings(params?: {
       queryClient.invalidateQueries({ queryKey: [HOUSING_ACTIVE_KEY] });
       message.success('تمت إضافة السكن بنجاح / Housing unit created');
     },
-    onError: (err: any) => {
-      message.error(err.response?.data?.message || 'فشل إضافة السكن / Failed to create housing');
+    onError: (err: unknown) => {
+      message.error(extractApiError(err, 'فشل إضافة السكن / Failed to create housing'));
     },
   });
 
@@ -50,8 +51,8 @@ export function useHousings(params?: {
       queryClient.invalidateQueries({ queryKey: [HOUSING_ACTIVE_KEY] });
       message.success('تم تحديث السكن بنجاح / Housing unit updated');
     },
-    onError: (err: any) => {
-      message.error(err.response?.data?.message || 'فشل تحديث السكن / Failed to update housing');
+    onError: (err: unknown) => {
+      message.error(extractApiError(err, 'فشل تحديث السكن / Failed to update housing'));
     },
   });
 
@@ -62,8 +63,8 @@ export function useHousings(params?: {
       queryClient.invalidateQueries({ queryKey: [HOUSING_ACTIVE_KEY] });
       message.success('تم تغيير حالة السكن / Housing status toggled');
     },
-    onError: (err: any) => {
-      message.error(err.response?.data?.message || 'فشل تغيير الحالة / Failed to toggle status');
+    onError: (err: unknown) => {
+      message.error(extractApiError(err, 'فشل تغيير الحالة / Failed to toggle status'));
     },
   });
 
@@ -74,8 +75,8 @@ export function useHousings(params?: {
       queryClient.invalidateQueries({ queryKey: [HOUSING_ACTIVE_KEY] });
       message.success('تم حذف السكن / Housing unit deleted');
     },
-    onError: (err: any) => {
-      message.error(err.response?.data?.message || 'فشل حذف السكن / Failed to delete housing');
+    onError: (err: unknown) => {
+      message.error(extractApiError(err, 'فشل حذف السكن / Failed to delete housing'));
     },
   });
 

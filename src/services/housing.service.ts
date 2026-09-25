@@ -86,7 +86,7 @@ export class HousingService {
     const response = await api.post<any>(API_ENDPOINTS.HOUSING.CREATE, {
       name: data.name,
       address: data.address ?? null,
-      capacity: Number(data.capacity),
+      capacity: data.capacity != null ? Number(data.capacity) : null,
       notes: data.notes ?? null,
       workerHousingCost: data.workerHousingCost != null ? Number(data.workerHousingCost) : null,
       housingOperationPrice: data.housingOperationPrice != null ? Number(data.housingOperationPrice) : null,

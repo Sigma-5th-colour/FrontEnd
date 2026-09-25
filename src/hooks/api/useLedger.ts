@@ -65,13 +65,21 @@ export function usePartyOptions(kind: PartyKind) {
   });
 }
 
-/** 3.1 General Ledger — requires an accountId (query disabled until set). */
+/** 3.1 General Ledger — enabled when From/To are present (account is optional). */
 export function useGeneralLedger(query: Partial<GeneralLedgerQuery>) {
   return useQuery({
-    queryKey: [LEDGER_KEY, 'general', query.accountId, query.from ?? '', query.to ?? '', query.branchId ?? ''],
+    queryKey: [
+      LEDGER_KEY,
+      'general',
+      query.accountId ?? '',
+      query.from ?? '',
+      query.to ?? '',
+      query.branchId ?? '',
+      query.includeSubBranches ?? '',
+    ],
     queryFn: () => LedgerService.getGeneralLedger(query as GeneralLedgerQuery),
     placeholderData: (previous) => previous,
-    enabled: !!query.accountId,
+    enabled: !!query.from && !!query.to,
   });
 }
 

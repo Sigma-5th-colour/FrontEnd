@@ -11,6 +11,8 @@ import {
   type JournalEntryLineDetail,
   type JournalEntryInput,
   type JournalEntryLookups,
+  type JournalEntryPrintDto,
+  type JournalEntryPrintLineDto,
 } from '@/types/journal-entry.types';
 
 /**
@@ -123,6 +125,7 @@ export class JournalEntryService {
       createdTo: this.dateOnly(query.createdTo ?? query.createdDateTo ?? query.to),
       employeeId: query.employeeId || null,
       entryStatus: query.entryStatus ?? query.status ?? null,
+      isApproved: query.isApproved ?? null,
       contractNumber:
         query.contractNumber != null && query.contractNumber !== ''
           ? String(query.contractNumber)
@@ -183,6 +186,35 @@ export class JournalEntryService {
       createdBy: raw?.createdBy ?? null,
       createdDate: raw?.createdDate ?? null,
       lines: this.asArray(raw?.lines ?? raw?.lines?.$values).map((l) => this.toLine(l)),
+    };
+  }
+
+  /** GET /JournalEntries/{id}/print — printable snapshot. */
+  static async getPrintData(id: string): Promise<JournalEntryPrintDto> {
+    const response = await api.get<any>(API_ENDPOINTS.JOURNAL_ENTRIES.PRINT(id));
+    const raw = this.unwrap<any>(response.data);
+    const lines: JournalEntryPrintLineDto[] = this.asArray(raw?.lines).map((l: any) => ({
+      accountNumber: l?.accountNumber ?? l?.accountCode ?? '',
+      accountName: l?.accountName ?? '',
+      description: l?.description ?? null,
+      debit: this.num(l?.debit),
+      credit: this.num(l?.credit),
+    }));
+    return {
+      id: raw?.id ?? id,
+      serialNumber: this.num(raw?.serialNumber),
+      entryNumber: raw?.entryNumber ?? '',
+      date: raw?.date ?? '',
+      description: raw?.description ?? '',
+      status: normalizeStatus(raw?.status),
+      statusLabel: raw?.statusLabel ?? '',
+      createdBy: raw?.createdBy ?? '',
+      createdDate: raw?.createdDate ?? '',
+      approvedBy: raw?.approvedBy ?? null,
+      approvalDate: raw?.approvalDate ?? null,
+      totalDebit: this.num(raw?.totalDebit),
+      totalCredit: this.num(raw?.totalCredit),
+      lines,
     };
   }
 

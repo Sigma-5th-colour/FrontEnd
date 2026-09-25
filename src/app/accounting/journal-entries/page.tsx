@@ -30,6 +30,7 @@ import {
   RollbackOutlined,
   CheckCircleFilled,
   CloseCircleFilled,
+  PrinterOutlined,
 } from '@ant-design/icons';
 import {
   useJournalEntries,
@@ -43,7 +44,6 @@ import { useHREmployees } from '@/hooks/api/useHR';
 import { useAuthStore } from '@/store/authStore';
 import { AdvancedFilterPanel, BranchFilterSelect, DateRangeFilter } from '@/components/filters';
 import {
-  JOURNAL_STATUSES,
   JOURNAL_SOURCES,
   JOURNAL_SORT_BY,
   JOURNAL_SORT_DIRECTION,
@@ -83,7 +83,8 @@ export default function JournalEntriesPage() {
   // ── Query state ─────────────────────────────────────────────
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState(''); // debounced, server-side
-  const [status, setStatus] = useState<JournalEntryStatus | undefined>();
+  /** Approval filter: undefined = All, true = Approved, false = Not Approved */
+  const [isApproved, setIsApproved] = useState<boolean | undefined>();
   const [entryType, setEntryType] = useState<JournalEntrySource | undefined>();
   const [contractType, setContractType] = useState<number | undefined>();
   const [contractNumber, setContractNumber] = useState<number | undefined>();
@@ -126,7 +127,7 @@ export default function JournalEntriesPage() {
     pageSize,
     // `notes` is a contains filter over description/notes in POST /search.
     notes: search || undefined,
-    status,
+    isApproved,
     entryType,
     contractType,
     contractNumber,
@@ -206,14 +207,14 @@ export default function JournalEntriesPage() {
 
   const lookupLabel = (option: JournalEntryLookupOption) =>
     (isAr ? option.nameAr : option.nameEn) || option.name || option.nameAr || option.nameEn || String(option.value);
-  const entryStatusOptions =
-    lookups?.entryStatuses?.length
-      ? lookups.entryStatuses.map((s) => ({ value: s.value, label: lookupLabel(s) }))
-      : JOURNAL_STATUSES.map((s) => ({ value: s.value, label: isAr ? s.ar : s.en }));
   const entryTypeOptions =
     lookups?.entryTypes?.length
       ? lookups.entryTypes.map((s) => ({ value: s.value, label: lookupLabel(s) }))
       : JOURNAL_SOURCES.map((s) => ({ value: s.value, label: isAr ? s.ar : s.en }));
+  const approvalFilterOptions = [
+    { value: true as const, label: t('معتمد', 'Approved') },
+    { value: false as const, label: t('غير معتمد', 'Not Approved') },
+  ];
   const contractTypeOptions =
     lookups?.contractTypes?.length
       ? lookups.contractTypes.map((s) => ({ value: s.value, label: lookupLabel(s) }))
@@ -264,7 +265,7 @@ export default function JournalEntriesPage() {
   // range back to the last-month window, not to empty — that's this page's
   // baseline "no explicit filter" state).
   const activeFilterCount = [
-    status,
+    isApproved,
     entryType,
     contractType,
     contractNumber,
@@ -278,7 +279,7 @@ export default function JournalEntriesPage() {
   ].filter((v) => v !== undefined && v !== null && v !== '').length;
 
   const clearFilters = () => {
-    setStatus(undefined);
+    setIsApproved(undefined);
     setEntryType(undefined);
     setContractType(undefined);
     setContractNumber(undefined);
@@ -397,6 +398,13 @@ export default function JournalEntriesPage() {
           onClick={() => setDetailId(record.id)}
         >
           {t('عرض', 'View')}
+        </Button>
+        <Button
+          size="small"
+          icon={<PrinterOutlined />}
+          onClick={() => router.push(`/accounting/journal-entries/${record.id}/print`)}
+        >
+          {t('طباعة', 'Print')}
         </Button>
         {accountingGates.canManage && isDraft && (
           <>
@@ -670,18 +678,18 @@ export default function JournalEntriesPage() {
       >
         <Row gutter={[16, 16]}>
           <Col xs={24} md={6}>
-            <label className={styles.filterLabel}>{t('الحالة', 'Status')}</label>
+            <label className={styles.filterLabel}>{t('حالة الاعتماد', 'Approval Status')}</label>
             <Select
               size="large"
               allowClear
               style={{ width: '100%' }}
-              value={status}
+              value={isApproved}
               onChange={(v) => {
-                setStatus(v);
+                setIsApproved(v);
                 setPageNumber(1);
               }}
-              placeholder={t('الحالة', 'Status')}
-              options={entryStatusOptions}
+              placeholder={t('الكل', 'All')}
+              options={approvalFilterOptions}
             />
           </Col>
           <Col xs={24} md={6}>

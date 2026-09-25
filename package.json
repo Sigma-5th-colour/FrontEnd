@@ -4,7 +4,7 @@
   "description": "Modern Next.js 14 admin system with RTL Arabic support",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-with-insecure-tls.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

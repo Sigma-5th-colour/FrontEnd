@@ -72,6 +72,9 @@ export function useJournalEntries(query: JournalEntriesQuery) {
       query.totalCreditTo ?? '',
       query.sortBy ?? '',
       query.sortDirection ?? '',
+      query.isApproved ?? '',
+      query.createdFrom ?? '',
+      query.createdTo ?? '',
     ],
     queryFn: () => JournalEntryService.getAll(query),
     placeholderData: (previous) => previous,
@@ -100,6 +103,15 @@ export function useJournalEntryDetail(id: string | null) {
   return useQuery({
     queryKey: [JOURNAL_ENTRIES_KEY, 'detail', id],
     queryFn: () => JournalEntryService.getById(id as string),
+    enabled: !!id,
+  });
+}
+
+/** Printable journal entry snapshot (lazy — only fetched when `id` is set). */
+export function useJournalEntryPrint(id: string | undefined) {
+  return useQuery({
+    queryKey: [JOURNAL_ENTRIES_KEY, 'print', id],
+    queryFn: () => JournalEntryService.getPrintData(id!),
     enabled: !!id,
   });
 }

@@ -24,10 +24,20 @@ export interface AccountTreeNode {
   children?: AccountTreeNode[] | null;
 }
 
+/** GET /account/next-code?parentId= */
+export interface NextAccountCodeDto {
+  parentId?: string | null;
+  parentCode?: string | null;
+  nextCode: string;
+}
+
 /** POST /account/create-account */
 export interface CreateAccountDto {
-  /** Must start with the parent's code when parentId is provided */
-  code: string;
+  /**
+   * Optional. When omitted/blank the server generates the next unique code
+   * under parentId. The create form shows the preview as read-only.
+   */
+  code?: string | null;
   name: string;
   /** Parent account GUID — omit for root accounts */
   parentId?: string | null;

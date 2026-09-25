@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, type Key, type ReactNode } from 'react';
 import { Layout, Menu, Drawer, Badge } from 'antd';
 import {
   DashboardOutlined,
@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { useCanAccess } from '@/hooks/api/usePagePermissions';
 import Image from 'next/image';
@@ -25,13 +26,42 @@ import styles from './Sidebar.module.css';
 
 const { Sider } = Layout;
 
+type MenuItem = Required<MenuProps>['items'][number];
+
+/** Wrap leaf route labels in Next.js Link so right-click → Open in new tab works. */
+function withNavLinks(items: MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    if (!item || typeof item !== 'object') return item;
+
+    const node = item as MenuItem & {
+      key?: Key;
+      label?: ReactNode;
+      children?: MenuItem[];
+    };
+
+    if (node.children?.length) {
+      return { ...node, children: withNavLinks(node.children) } as MenuItem;
+    }
+
+    const key = String(node.key ?? '');
+    if (!key.startsWith('/')) return item;
+
+    return {
+      ...node,
+      label: (
+        <Link href={key} className={styles.menuLink}>
+          {node.label}
+        </Link>
+      ),
+    } as MenuItem;
+  });
+}
+
 interface SidebarProps {
   collapsed: boolean;
   mobileDrawerVisible: boolean;
   onMobileDrawerClose: () => void;
 }
-
-type MenuItem = Required<MenuProps>['items'][number];
 
 export default function Sidebar({
   collapsed,
@@ -533,7 +563,6 @@ export default function Sidebar({
           {language === 'ar' ? 'الشكاوى' : 'Complaints'}
         </Badge>
       ),
-      onClick: () => router.push('/complaints'),
     },
     {
       key: 'settings',
@@ -604,7 +633,7 @@ export default function Sidebar({
   const filterMenu = (items: MenuItem[]): MenuItem[] =>
     items.reduce<MenuItem[]>((acc, item) => {
       if (!item) return acc;
-      const node = item as MenuItem & { key?: React.Key; children?: MenuItem[] };
+      const node = item as MenuItem & { key?: Key; children?: MenuItem[] };
 
       if (node.children) {
         const children = filterMenu(node.children);
@@ -618,11 +647,31 @@ export default function Sidebar({
       return acc;
     }, []);
 
-  const visibleMenuItems = filterMenu(menuItems);
+  const visibleMenuItems = useMemo(
+    () => withNavLinks(filterMenu(menuItems)),
+    // menuItems rebuilds each render from language/check; filter uses check().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [language, check, pathname]
+  );
 
-  const handleMenuClick = (e: { key: string }) => {
-    router.push(e.key);
-    // Close mobile drawer on navigation
+  const handleMenuClick: MenuProps['onClick'] = (e) => {
+    // Route leaves use <Link>; keep soft navigation for keyboard / Ant Menu activation.
+    if (e.key.startsWith('/')) {
+      const domEvent = e.domEvent;
+      const isMiddleClick = 'button' in domEvent && domEvent.button === 1;
+      // Let the browser handle modified clicks / middle-click via the real <a>.
+      if (
+        domEvent.metaKey ||
+        domEvent.ctrlKey ||
+        domEvent.shiftKey ||
+        domEvent.altKey ||
+        isMiddleClick
+      ) {
+        onMobileDrawerClose();
+        return;
+      }
+      router.push(e.key);
+    }
     onMobileDrawerClose();
   };
 

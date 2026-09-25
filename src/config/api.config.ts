@@ -598,6 +598,8 @@ export const API_ENDPOINTS = {
     FULL_TREE: '/api/V1/account/full-tree-structure',
     // GET sub-tree rooted at a parent account
     SUBTREE: (parentId: string) => `/api/V1/account/subtree/${parentId}`,
+    // GET next server-generated account code (optional parentId query)
+    NEXT_CODE: '/api/V1/account/next-code',
     // POST create a new account (parent becomes a non-leaf node automatically)
     CREATE: '/api/V1/account/create-account',
     // PUT update an account's display name
@@ -628,6 +630,7 @@ export const API_ENDPOINTS = {
     SEARCH: '/api/V1/JournalEntries/search',
     LOOKUPS: '/api/V1/JournalEntries/lookups',
     GET_BY_ID: (id: string) => `/api/V1/JournalEntries/${id}`,
+    PRINT: (id: string) => `/api/V1/JournalEntries/${id}/print`,
     CREATE: '/api/V1/JournalEntries',
     UPDATE: (id: string) => `/api/V1/JournalEntries/${id}`,
     DELETE: (id: string) => `/api/V1/JournalEntries/${id}`,
@@ -644,9 +647,13 @@ export const API_ENDPOINTS = {
   // Read-only reports. All return ONLY Posted data and accept from/to (ISO 8601).
   LEDGER: {
     GENERAL: '/api/V1/Ledger/general-ledger',
+    GENERAL_EXPORT: '/api/V1/Ledger/general-ledger/export',
     AGENT: '/api/V1/Ledger/agent-ledger',
+    AGENT_EXPORT: '/api/V1/Ledger/agent-ledger/export',
     CUSTOMER: '/api/V1/Ledger/customer-ledger',
+    CUSTOMER_EXPORT: '/api/V1/Ledger/customer-ledger/export',
     WORKER: '/api/V1/Ledger/worker-ledger',
+    WORKER_EXPORT: '/api/V1/Ledger/worker-ledger/export',
     TRIAL_BALANCE: '/api/V1/Ledger/trial-balance',
     INCOME_STATEMENT: '/api/V1/Ledger/income-statement',
     BALANCE_SHEET: '/api/V1/Ledger/balance-sheet',

@@ -7,6 +7,7 @@ import type {
   UpdateAccountReportSideDto,
   AccountSettingListDto,
   AccountSettingsQuery,
+  NextAccountCodeDto,
   PagedResult,
 } from '@/types/accounting.types';
 
@@ -91,15 +92,33 @@ export class AccountService {
     };
   }
 
+  /** GET /account/next-code?parentId= — server-generated next account number. */
+  static async getNextCode(parentId?: string | null): Promise<NextAccountCodeDto> {
+    const response = await api.get<any>(API_ENDPOINTS.ACCOUNT.NEXT_CODE, {
+      params: { parentId: parentId || undefined },
+    });
+    const data = this.unwrap<any>(response.data);
+    return {
+      parentId: data?.parentId ?? parentId ?? null,
+      parentCode: data?.parentCode ?? null,
+      nextCode: data?.nextCode ?? '',
+    };
+  }
+
   // ==================== Writes ====================
 
   /** POST /account/create-account */
   static async create(data: CreateAccountDto): Promise<AccountTreeNode> {
-    const response = await api.post<any>(API_ENDPOINTS.ACCOUNT.CREATE, {
-      code: data.code,
+    const body: Record<string, unknown> = {
       name: data.name,
       parentId: data.parentId ?? null,
-    });
+    };
+    // Only forward code when the caller explicitly supplies one; blank/omit
+    // lets the backend auto-generate.
+    if (data.code != null && String(data.code).trim() !== '') {
+      body.code = String(data.code).trim();
+    }
+    const response = await api.post<any>(API_ENDPOINTS.ACCOUNT.CREATE, body);
     return this.unwrap<AccountTreeNode>(response.data);
   }
 

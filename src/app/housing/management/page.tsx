@@ -132,14 +132,18 @@ export default function HousingManagementPage() {
   }, !!housings && housings.length > 0);
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
-    if (editingItem) {
-      await updateHousing({ id: editingItem.id, data: values });
-    } else {
-      await createHousing(values);
+    try {
+      const values = await form.validateFields();
+      if (editingItem) {
+        await updateHousing({ id: editingItem.id, data: values });
+      } else {
+        await createHousing(values);
+      }
+      setModalOpen(false);
+      form.resetFields();
+    } catch {
+      // Validation or API error — keep modal open; toast handled by mutation.
     }
-    setModalOpen(false);
-    form.resetFields();
   };
 
   const columns: ColumnsType<Housing> = [

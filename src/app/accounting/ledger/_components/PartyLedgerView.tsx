@@ -9,7 +9,8 @@ import { usePartyLedger, usePartyOptions } from '@/hooks/api/useLedger';
 import { useAuthStore } from '@/store/authStore';
 import type { PartyKind, PartyLedgerLine } from '@/types/ledger.types';
 import { LedgerHeader } from './LedgerHeader';
-import { AdvancedFilterPanel, BranchFilterSelect, DateRangeFilter } from '@/components/filters';
+import { AdvancedFilterPanel, BranchFilterSelect, DateRangeFilter, ExportButton } from '@/components/filters';
+import { API_ENDPOINTS } from '@/config/api.config';
 import { fmtAmount, fmtDate } from './ledgerFormat';
 import { linkProps } from '@/lib/navigation/linkProps';
 import styles from '../Ledger.module.css';
@@ -20,6 +21,18 @@ interface PartyLedgerViewProps {
   title: string;
   subtitle: string;
   idLabel: string;
+}
+
+function partyExportEndpoint(kind: PartyKind): string {
+  if (kind === 'agent') return API_ENDPOINTS.LEDGER.AGENT_EXPORT;
+  if (kind === 'customer') return API_ENDPOINTS.LEDGER.CUSTOMER_EXPORT;
+  return API_ENDPOINTS.LEDGER.WORKER_EXPORT;
+}
+
+function partyIdParam(kind: PartyKind): string {
+  if (kind === 'agent') return 'agentId';
+  if (kind === 'customer') return 'customerId';
+  return 'workerId';
 }
 
 /** Shared report used by the Agent, Customer and Worker ledger pages. */
@@ -152,6 +165,21 @@ export function PartyLedgerView({ kind, icon, title, subtitle, idLabel }: PartyL
       <AdvancedFilterPanel
         activeCount={activeFilterCount}
         onClear={clearFilters}
+        actions={
+          <ExportButton
+            endpoint={partyExportEndpoint(kind)}
+            filters={{
+              [partyIdParam(kind)]: selectedId,
+              from: range[0],
+              to: range[1],
+              branchId,
+              includeSubBranches: branchId ? includeSubBranches : undefined,
+            }}
+            fileName={`${kind}-ledger.xlsx`}
+            label={t('تصدير Excel', 'Export Excel')}
+            disabled={!selectedId || !range[0] || !range[1]}
+          />
+        }
         quickFilters={
           <>
             <Select

@@ -60,26 +60,33 @@ export class LedgerService {
 
   static async getGeneralLedger(query: GeneralLedgerQuery): Promise<GeneralLedger> {
     const response = await api.get<any>(API_ENDPOINTS.LEDGER.GENERAL, {
-      params: { accountId: query.accountId, ...this.dateParams(query) },
+      params: {
+        accountId: query.accountId || undefined,
+        ...this.dateParams(query),
+      },
     });
     const d = this.unwrap<any>(response.data);
     return {
-      accountId: d?.accountId,
+      accountId: d?.accountId ?? null,
       accountCode: d?.accountCode ?? '',
       accountName: d?.accountName ?? '',
       openingBalance: this.num(d?.openingBalance),
       totalDebit: this.num(d?.totalDebit),
       totalCredit: this.num(d?.totalCredit),
       closingBalance: this.num(d?.closingBalance),
+      isMultiAccount: !!d?.isMultiAccount || !d?.accountId,
       lines: this.asArray(d?.lines).map(
         (l): GeneralLedgerLine => ({
           date: l?.date ?? '',
           entryNumber: l?.entryNumber ?? '',
           journalEntryId: l?.journalEntryId ?? l?.entryId ?? null,
+          accountCode: l?.accountCode ?? '',
+          accountName: l?.accountName ?? '',
           description: l?.description ?? '',
           debit: this.num(l?.debit),
           credit: this.num(l?.credit),
           balanceAfter: this.num(l?.balanceAfter),
+          status: l?.status ?? null,
           customerId: l?.customerId ?? null,
           customerName: l?.customerName ?? l?.customerNameAr ?? l?.customerNameEn ?? null,
           contractNumber:

@@ -48,6 +48,20 @@
   color: #ffffff;
 }
 
+/* Real <a> inside items — enables Open in new tab / middle-click */
+.menuLink {
+  color: inherit !important;
+  text-decoration: none !important;
+  display: block;
+  width: 100%;
+}
+
+.menu :global(.ant-menu-item) a,
+.menu :global(.ant-menu-item) a:hover,
+.menu :global(.ant-menu-item-selected) a {
+  color: inherit !important;
+}
+
 .menu :global(.ant-menu-item),
 .menu :global(.ant-menu-submenu-title) {
   color: rgba(255, 255, 255, 0.85);

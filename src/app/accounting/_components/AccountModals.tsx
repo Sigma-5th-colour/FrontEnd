@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Form, Input, TreeSelect, Select, Switch, Space, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, SlidersOutlined } from '@ant-design/icons';
-import { useAccountTree } from '@/hooks/api/useAccounts';
+import { useAccountTree, useNextAccountCode } from '@/hooks/api/useAccounts';
 import { getAccountType, ACCOUNT_REPORT_SIDES } from '@/types/accounting.types';
 import type { AccountTreeNode, AccountReportSide } from '@/types/accounting.types';
 import { useAuthStore } from '@/store/authStore';
@@ -29,19 +29,16 @@ interface ParentTreeNode {
   children?: ParentTreeNode[];
 }
 
-/** Build TreeSelect data + lookups (code-by-id, leaf-by-id) from the account tree. */
+/** Build TreeSelect data + lookups (leaf-by-id) from the account tree. */
 function buildParentOptions(tree: AccountTreeNode[]): {
   options: ParentTreeNode[];
-  codeById: Map<string, string>;
   leafById: Map<string, boolean>;
 } {
-  const codeById = new Map<string, string>();
   const leafById = new Map<string, boolean>();
 
   const toOptions = (nodes: AccountTreeNode[]): ParentTreeNode[] =>
     nodes.map((node) => {
       const children = node.children ?? [];
-      codeById.set(node.id, node.code);
       leafById.set(node.id, node.isLeaf ?? children.length === 0);
       return {
         title: `${node.code} — ${node.name}`,
@@ -50,7 +47,7 @@ function buildParentOptions(tree: AccountTreeNode[]): {
       };
     });
 
-  return { options: toOptions(tree), codeById, leafById };
+  return { options: toOptions(tree), leafById };
 }
 
 /**
@@ -58,7 +55,7 @@ function buildParentOptions(tree: AccountTreeNode[]): {
  *
  * Both the Chart of Accounts page (tree-based, primary surface) and the
  * Account Settings page (list-based) drive the *same* modals through this hook,
- * so the create-code validation and reporting-side logic live in one place.
+ * so create-code preview and reporting-side logic live in one place.
  *
  * Delete is intentionally left to the caller (each page renders its own
  * Popconfirm next to the relevant control) — `deleteAccount` + `isDeleting`
@@ -82,19 +79,27 @@ export function useAccountModals() {
     isDeleting,
   } = useAccountTree();
 
-  const { options: parentOptions, codeById, leafById } = useMemo(
-    () => buildParentOptions(tree),
-    [tree]
-  );
+  const { options: parentOptions, leafById } = useMemo(() => buildParentOptions(tree), [tree]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [nameOpen, setNameOpen] = useState(false);
   const [reportingOpen, setReportingOpen] = useState(false);
   const [editing, setEditing] = useState<AccountLike | null>(null);
+  const [createParentId, setCreateParentId] = useState<string | undefined>();
 
   const [createForm] = Form.useForm();
   const [nameForm] = Form.useForm();
   const [reportingForm] = Form.useForm();
+
+  const { data: nextCodeData, isFetching: nextCodeLoading } = useNextAccountCode(
+    createParentId,
+    createOpen
+  );
+
+  useEffect(() => {
+    if (!createOpen) return;
+    createForm.setFieldsValue({ code: nextCodeData?.nextCode ?? '' });
+  }, [createOpen, createForm, nextCodeData?.nextCode]);
 
   const reportSideSelectOptions = ACCOUNT_REPORT_SIDES.map((o) => ({
     value: o.value,
@@ -106,8 +111,9 @@ export function useAccountModals() {
   const openCreate = (parentId?: string) => {
     if (!accountingGates.canCreate) return;
     createForm.resetFields();
+    setCreateParentId(parentId);
     if (parentId) {
-      createForm.setFieldsValue({ parentId, code: codeById.get(parentId) ?? '' });
+      createForm.setFieldsValue({ parentId });
     }
     setCreateOpen(true);
   };
@@ -132,19 +138,21 @@ export function useAccountModals() {
 
   // ── Submitters ────────────────────────────────────────────
   const onParentChange = (parentId?: string) => {
-    createForm.setFieldsValue({ code: parentId ? codeById.get(parentId) ?? '' : '' });
+    setCreateParentId(parentId);
+    createForm.setFieldsValue({ code: '' });
   };
 
   const submitCreate = async () => {
     if (!accountingGates.canCreate) return;
     try {
       const values = await createForm.validateFields();
+      // Server generates the code when blank; UI preview is display-only.
       await createAccount({
-        code: values.code.trim(),
         name: values.name.trim(),
         parentId: values.parentId ?? null,
       });
       setCreateOpen(false);
+      setCreateParentId(undefined);
       createForm.resetFields();
     } catch {
       // Either a form-validation rejection (antd already shows the inline
@@ -205,7 +213,10 @@ export function useAccountModals() {
           </Space>
         }
         onOk={submitCreate}
-        onCancel={() => setCreateOpen(false)}
+        onCancel={() => {
+          setCreateOpen(false);
+          setCreateParentId(undefined);
+        }}
         okText={t('حفظ', 'Save')}
         cancelText={t('إلغاء', 'Cancel')}
         confirmLoading={isCreating}
@@ -217,8 +228,8 @@ export function useAccountModals() {
             name="parentId"
             label={t('الحساب الأساسي (اختياري)', 'Parent Account (optional)')}
             extra={t(
-              'اتركه فارغًا لإنشاء حساب رئيسي. عند الاختيار يجب أن يبدأ رقم الحساب برقم الحساب الأساسي.',
-              'Leave empty for a root account. When set, the code must start with the parent code.'
+              'اتركه فارغًا لإنشاء حساب رئيسي. يُولَّد رقم الحساب تلقائيًا.',
+              'Leave empty for a root account. The account number is generated automatically.'
             )}
           >
             <TreeSelect
@@ -234,48 +245,19 @@ export function useAccountModals() {
 
           <Form.Item
             name="code"
-            label={t('رقم الحساب', 'Account Code')}
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value || !value.trim()) {
-                    return Promise.reject(
-                      new Error(t('رقم الحساب مطلوب', 'Account code is required'))
-                    );
-                  }
-                  const code = value.trim();
-                  if (!/^\d+$/.test(code)) {
-                    return Promise.reject(
-                      new Error(t('يجب أن يتكون رقم الحساب من أرقام فقط', 'Code must be digits only'))
-                    );
-                  }
-                  const parentId = createForm.getFieldValue('parentId');
-                  if (parentId) {
-                    const parentCode = codeById.get(parentId);
-                    if (parentCode && !code.startsWith(parentCode)) {
-                      return Promise.reject(
-                        new Error(
-                          t(`يجب أن يبدأ الرقم بـ ${parentCode}`, `Code must start with ${parentCode}`)
-                        )
-                      );
-                    }
-                    if (parentCode && code.length <= parentCode.length) {
-                      return Promise.reject(
-                        new Error(
-                          t(
-                            'يجب أن يكون رقم الحساب الفرعي أطول من رقم الحساب الأساسي',
-                            'Sub-account code must be longer than the parent code'
-                          )
-                        )
-                      );
-                    }
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
+            label={t('رقم الحساب', 'Account Number')}
+            extra={t(
+              'يُولَّد تلقائيًا من الخادم ولا يمكن تعديله.',
+              'Generated by the server and cannot be edited.'
+            )}
           >
-            <Input size="large" placeholder={t('مثال: 1002001', 'e.g. 1002001')} dir="ltr" />
+            <Input
+              size="large"
+              readOnly
+              disabled
+              placeholder={nextCodeLoading ? t('جاري التوليد...', 'Generating...') : '—'}
+              dir="ltr"
+            />
           </Form.Item>
 
           {/* Live account-type hint based on the leading digit */}

@@ -127,6 +127,16 @@ export function useAccountTree() {
   };
 }
 
+/** Preview the next server-generated account code for a parent (or root). */
+export function useNextAccountCode(parentId: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: [ACCOUNTS_KEY, 'next-code', parentId ?? 'root'],
+    queryFn: () => AccountService.getNextCode(parentId),
+    enabled,
+    staleTime: 0,
+  });
+}
+
 /**
  * Paginated, searchable account-settings list (GET /account/settings).
  * Its query key is namespaced under ACCOUNTS_KEY so the mutations in

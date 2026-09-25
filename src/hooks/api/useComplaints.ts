@@ -49,6 +49,10 @@ export const useComplaints = (params?: {
   branchId?: string;
   includeSubBranches?: boolean;
   status?: number;
+  source?: number;
+  workerLocation?: number;
+  relatedContractType?: number;
+  relatedContractId?: string;
   createdDateFrom?: string;
   createdDateTo?: string;
   updatedDateFrom?: string;

@@ -237,6 +237,32 @@ export interface JournalEntryDetail extends JournalEntryListItem {
   lines: JournalEntryLineDetail[];
 }
 
+/** GET /JournalEntries/{id}/print */
+export interface JournalEntryPrintLineDto {
+  accountNumber: string;
+  accountName: string;
+  description?: string | null;
+  debit: number;
+  credit: number;
+}
+
+export interface JournalEntryPrintDto {
+  id: string;
+  serialNumber: number;
+  entryNumber: string;
+  date: string;
+  description: string;
+  status: JournalEntryStatus;
+  statusLabel: string;
+  createdBy: string;
+  createdDate: string;
+  approvedBy?: string | null;
+  approvalDate?: string | null;
+  totalDebit: number;
+  totalCredit: number;
+  lines: JournalEntryPrintLineDto[];
+}
+
 // ==================== Write models ====================
 
 /** A single debit/credit line in the create/update body (JournalEntryLineCreateDto). */
@@ -275,6 +301,12 @@ export interface JournalEntriesQuery {
   /** Numeric status code (Status=1). */
   status?: JournalEntryStatus;
   entryStatus?: JournalEntryStatus;
+  /**
+   * Approval filter for POST /search — null/omit = All,
+   * true = Posted (Approved), false = not Posted (Not Approved).
+   * When set, takes precedence over status/entryStatus server-side.
+   */
+  isApproved?: boolean | null;
   /** Numeric source code (Source=10). */
   source?: JournalEntrySource;
   entryType?: JournalEntrySource;

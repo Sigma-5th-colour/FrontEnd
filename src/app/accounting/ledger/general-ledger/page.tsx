@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, Table, Empty, Spin, Alert } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -9,7 +9,14 @@ import { useRouter } from 'next/navigation';
 import { useGeneralLedger } from '@/hooks/api/useLedger';
 import { useAuthStore } from '@/store/authStore';
 import type { GeneralLedgerLine } from '@/types/ledger.types';
-import { AccountSelect, AdvancedFilterPanel, BranchFilterSelect, DateRangeFilter } from '@/components/filters';
+import {
+  AccountSelect,
+  AdvancedFilterPanel,
+  BranchFilterSelect,
+  DateRangeFilter,
+  ExportButton,
+} from '@/components/filters';
+import { API_ENDPOINTS } from '@/config/api.config';
 import { LedgerHeader } from '../_components/LedgerHeader';
 import { fmtAmount, fmtBalance, fmtDate } from '../_components/ledgerFormat';
 import { linkProps } from '@/lib/navigation/linkProps';
@@ -29,13 +36,18 @@ export default function GeneralLedgerPage() {
   const [branchId, setBranchId] = useState<string | undefined>();
   const [includeSubBranches, setIncludeSubBranches] = useState(true);
 
-  const { data, isLoading, isFetching, refetch, error } = useGeneralLedger({
+  const query = {
     accountId,
     from: range[0],
     to: range[1],
     branchId,
     includeSubBranches: branchId ? includeSubBranches : undefined,
-  });
+  };
+
+  const { data, isLoading, isFetching, refetch, error } = useGeneralLedger(query);
+
+  const multiAccount = !!data?.isMultiAccount || !accountId;
+  const hasDateRange = !!range[0] && !!range[1];
 
   const activeFilterCount = [accountId, range[0]].filter(Boolean).length;
   const clearFilters = () => {
@@ -46,78 +58,112 @@ export default function GeneralLedgerPage() {
     ]);
   };
 
-  const columns: ColumnsType<GeneralLedgerLine> = [
-    { title: t('التاريخ', 'Date'), dataIndex: 'date', key: 'date', width: 110, render: fmtDate },
-    {
-      title: t('رقم القيد', 'Entry No.'),
-      dataIndex: 'entryNumber',
-      key: 'entryNumber',
-      width: 120,
-      render: (v, record) =>
-        v ? (
-          <a
-            className={styles.entryNumber}
-            {...linkProps(
-              record.journalEntryId
-                ? `/accounting/journal-entries?openId=${encodeURIComponent(record.journalEntryId)}`
-                : `/accounting/journal-entries?entryNumber=${encodeURIComponent(v)}`,
-              router
-            )}
-          >
-            {v}
-          </a>
-        ) : (
-          <span className={styles.entryNumber}>—</span>
-        ),
-    },
-    {
-      title: t('رقم العقد', 'Contract No.'),
-      dataIndex: 'contractNumber',
-      key: 'contractNumber',
-      width: 120,
-      render: (v) => (v ? <span className={styles.code}>#{v}</span> : <span className={styles.muted}>—</span>),
-    },
-    {
-      title: t('العميل', 'Customer'),
-      key: 'customerName',
-      width: 180,
-      render: (_, record) => record.customerName || record.customerId || <span className={styles.muted}>—</span>,
-    },
-    {
-      title: t('الوصف', 'Description'),
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true,
-      render: (v) => v || '—',
-    },
-    {
-      title: t('مدين', 'Debit'),
-      dataIndex: 'debit',
-      key: 'debit',
-      width: 130,
-      align: 'right',
-      render: (v) => <span className={styles.amount}>{fmtAmount(v, true)}</span>,
-    },
-    {
-      title: t('دائن', 'Credit'),
-      dataIndex: 'credit',
-      key: 'credit',
-      width: 130,
-      align: 'right',
-      render: (v) => <span className={styles.amount}>{fmtAmount(v, true)}</span>,
-    },
-    {
-      title: t('الرصيد', 'Balance'),
-      dataIndex: 'balanceAfter',
-      key: 'balanceAfter',
-      width: 140,
-      align: 'right',
-      render: (v) => {
-        const b = fmtBalance(v);
-        return <span className={`${styles.amount} ${b.negative ? styles.negative : ''}`}>{b.text}</span>;
+  const columns: ColumnsType<GeneralLedgerLine> = useMemo(() => {
+    const base: ColumnsType<GeneralLedgerLine> = [
+      { title: t('التاريخ', 'Date'), dataIndex: 'date', key: 'date', width: 110, render: fmtDate },
+      {
+        title: t('رقم القيد', 'Entry No.'),
+        dataIndex: 'entryNumber',
+        key: 'entryNumber',
+        width: 120,
+        render: (v, record) =>
+          v ? (
+            <a
+              className={styles.entryNumber}
+              {...linkProps(
+                record.journalEntryId
+                  ? `/accounting/journal-entries?openId=${encodeURIComponent(record.journalEntryId)}`
+                  : `/accounting/journal-entries?entryNumber=${encodeURIComponent(v)}`,
+                router
+              )}
+            >
+              {v}
+            </a>
+          ) : (
+            <span className={styles.entryNumber}>—</span>
+          ),
       },
-    },
-  ];
+    ];
+
+    if (multiAccount) {
+      base.push(
+        {
+          title: t('رقم الحساب', 'Account Number'),
+          dataIndex: 'accountCode',
+          key: 'accountCode',
+          width: 120,
+          render: (v) => (v ? <span className={styles.code}>{v}</span> : <span className={styles.muted}>—</span>),
+        },
+        {
+          title: t('اسم الحساب', 'Account Name'),
+          dataIndex: 'accountName',
+          key: 'accountName',
+          width: 180,
+          ellipsis: true,
+          render: (v) => v || '—',
+        },
+        {
+          title: t('الحالة', 'Status'),
+          dataIndex: 'status',
+          key: 'status',
+          width: 110,
+          render: (v) => v || <span className={styles.muted}>—</span>,
+        }
+      );
+    }
+
+    base.push(
+      {
+        title: t('رقم العقد', 'Contract No.'),
+        dataIndex: 'contractNumber',
+        key: 'contractNumber',
+        width: 120,
+        render: (v) => (v ? <span className={styles.code}>#{v}</span> : <span className={styles.muted}>—</span>),
+      },
+      {
+        title: t('العميل', 'Customer'),
+        key: 'customerName',
+        width: 180,
+        render: (_, record) => record.customerName || record.customerId || <span className={styles.muted}>—</span>,
+      },
+      {
+        title: t('الوصف', 'Description'),
+        dataIndex: 'description',
+        key: 'description',
+        ellipsis: true,
+        render: (v) => v || '—',
+      },
+      {
+        title: t('مدين', 'Debit'),
+        dataIndex: 'debit',
+        key: 'debit',
+        width: 130,
+        align: 'right',
+        render: (v) => <span className={styles.amount}>{fmtAmount(v, true)}</span>,
+      },
+      {
+        title: t('دائن', 'Credit'),
+        dataIndex: 'credit',
+        key: 'credit',
+        width: 130,
+        align: 'right',
+        render: (v) => <span className={styles.amount}>{fmtAmount(v, true)}</span>,
+      },
+      {
+        title: t('الرصيد', 'Balance'),
+        dataIndex: 'balanceAfter',
+        key: 'balanceAfter',
+        width: 140,
+        align: 'right',
+        render: (v) => {
+          const b = fmtBalance(v);
+          return <span className={`${styles.amount} ${b.negative ? styles.negative : ''}`}>{b.text}</span>;
+        },
+      }
+    );
+
+    return base;
+  }, [isAr, multiAccount, router, t]);
 
   return (
     <div className={styles.page}>
@@ -125,8 +171,8 @@ export default function GeneralLedgerPage() {
         icon={<ProfileOutlined />}
         title={t('دفتر الأستاذ العام', 'General Ledger')}
         subtitle={t(
-          'حركات حساب محدد خلال فترة مع الرصيد الافتتاحي والختامي',
-          'Movements for a specific account over a period, with opening and closing balance'
+          'حركات الحسابات خلال فترة مع الرصيد الافتتاحي والختامي (الحساب اختياري)',
+          'Account movements over a period with opening and closing balance (account optional)'
         )}
         isFetching={isFetching}
         onRefresh={() => refetch()}
@@ -136,13 +182,28 @@ export default function GeneralLedgerPage() {
       <AdvancedFilterPanel
         activeCount={activeFilterCount}
         onClear={clearFilters}
+        actions={
+          <ExportButton
+            endpoint={API_ENDPOINTS.LEDGER.GENERAL_EXPORT}
+            filters={{
+              accountId: accountId || undefined,
+              from: range[0],
+              to: range[1],
+              branchId,
+              includeSubBranches: branchId ? includeSubBranches : undefined,
+            }}
+            fileName="general-ledger.xlsx"
+            label={t('تصدير Excel', 'Export Excel')}
+            disabled={!hasDateRange}
+          />
+        }
         quickFilters={
           <>
             <div style={{ flex: '1 1 320px', maxWidth: 460 }}>
               <AccountSelect
                 value={accountId}
                 onChange={setAccountId}
-                placeholder={t('اختر حسابًا لعرض حركاته...', 'Select an account to view movements...')}
+                placeholder={t('كل الحسابات (اختياري)', 'All accounts (optional)')}
               />
             </div>
             <div className={styles.filterField}>
@@ -164,11 +225,11 @@ export default function GeneralLedgerPage() {
       />
 
       <Card className={styles.tableCard}>
-        {!accountId ? (
+        {!hasDateRange ? (
           <div className={styles.promptState}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t('اختر حسابًا لعرض دفتر الأستاذ', 'Select an account to view its ledger')}
+              description={t('حدد فترة التاريخ لعرض دفتر الأستاذ', 'Select a date range to view the ledger')}
             />
           </div>
         ) : isLoading ? (
@@ -181,8 +242,8 @@ export default function GeneralLedgerPage() {
             showIcon
             message={t('تعذّر تحميل دفتر الأستاذ', 'Could not load the ledger')}
             description={t(
-              'تأكد من اختيار حساب صحيح يحتوي على حركات معمدة.',
-              'Make sure the selected account exists and has posted movements.'
+              'تأكد من صحة الفترة المحددة. عند اختيار حساب، يجب أن يحتوي على حركات معمدة.',
+              'Check the selected period. If an account is selected, it must have posted movements.'
             )}
           />
         ) : (
@@ -213,7 +274,7 @@ export default function GeneralLedgerPage() {
               loading={isFetching}
               size="middle"
               bordered
-              scroll={{ x: 1100 }}
+              scroll={{ x: multiAccount ? 1400 : 1100 }}
               locale={{ emptyText: t('لا توجد حركات في هذه الفترة', 'No movements in this period') }}
               pagination={{ pageSize: 20, showSizeChanger: true }}
             />

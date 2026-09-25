@@ -6,6 +6,7 @@ import { ApartmentOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBranches } from '@/hooks/api/useBranches';
 import { useAuthStore, getJwtBranchId } from '@/store/authStore';
+import { ALL_BRANCHES_ID } from '@/lib/branch';
 import type { Branch } from '@/types/api.types';
 
 const { Title, Text } = Typography;
@@ -43,23 +44,24 @@ export default function BranchGate() {
   const { branches, isLoading, error } = useBranches();
   const queryClient = useQueryClient();
 
-  const options = useMemo(
-    () => flattenBranches(Array.isArray(branches) ? branches : [], language),
-    [branches, language]
-  );
+  const isAr = language === 'ar';
+  const allLabel = isAr ? 'كل الفروع' : 'All branches';
+
+  const options = useMemo(() => {
+    const list = flattenBranches(Array.isArray(branches) ? branches : [], language);
+    return [{ value: ALL_BRANCHES_ID, label: allLabel }, ...list];
+  }, [branches, language, allLabel]);
 
   const [selected, setSelected] = useState<string | undefined>(undefined);
 
   // Pre-highlight the home branch once the list has loaded (if present in it).
   useEffect(() => {
-    if (selected || options.length === 0) return;
+    if (selected || options.length <= 1) return;
     const home = getJwtBranchId();
     if (home && options.some((o) => o.value === home)) {
       setSelected(home);
     }
   }, [options, selected]);
-
-  const isAr = language === 'ar';
 
   const handleConfirm = () => {
     if (!selected) return;
@@ -91,8 +93,8 @@ export default function BranchGate() {
             </Title>
             <Text type="secondary">
               {isAr
-                ? 'اختر الفرع الذي تريد العمل عليه للمتابعة'
-                : 'Choose the branch you want to work in to continue'}
+                ? 'اختر الفرع الذي تريد العمل عليه للمتابعة (أو كل الفروع للعرض فقط)'
+                : 'Choose the branch you want to work in (or All branches for read-only view)'}
             </Text>
           </div>
 

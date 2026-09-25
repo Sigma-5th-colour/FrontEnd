@@ -1,11 +1,10 @@
 /**
  * Searchable worker picker for operation contracts.
  *
- * Replaces the old free-text "worker name" inputs: the user searches the real
- * worker list (by Arabic/English name, passport number, or mobile) and picks a
- * record. The selected worker's UUID is bound to the form field (`workerId`)
- * and the name/phone fields are auto-filled from the worker so the contract DTO
- * still carries workerNameAr / workerNameEn / workerPhone.
+ * Loads workers that the backend considers available for contract assignment
+ * (`availableForMediationContract=true` — active and not busy on mediation /
+ * operating / transfer). When editing an existing contract, the currently
+ * selected worker is still shown even if they are now busy on this contract.
  *
  * Designed to be placed inside an Ant <Form> via <Form.Item name="workerId">.
  * It reads the surrounding form instance to auto-fill the sibling fields.
@@ -14,7 +13,7 @@
 
 import React, { useMemo } from 'react';
 import { Select, Form, Spin } from 'antd';
-import { useWorkers } from '@/hooks/api/useWorkers';
+import { useAvailableWorkers, useWorker } from '@/hooks/api/useWorkers';
 import type { Worker } from '@/types/api.types';
 
 interface Props {
@@ -47,14 +46,29 @@ export default function WorkerSelect({
   disabled,
 }: Props) {
   const form = Form.useFormInstance();
-  const { data: workers = [], isLoading } = useWorkers();
+  const { data: availableWorkers = [], isLoading: loadingAvailable } = useAvailableWorkers();
+  const { data: selectedWorker, isLoading: loadingSelected } = useWorker(
+    value && !availableWorkers.some((w) => String(w.id) === String(value)) ? value : undefined
+  );
+
+  const workers = useMemo(() => {
+    const list = [...(availableWorkers as Worker[])];
+    if (
+      selectedWorker &&
+      !list.some((w) => String(w.id) === String(selectedWorker.id))
+    ) {
+      list.unshift(selectedWorker);
+    }
+    return list;
+  }, [availableWorkers, selectedWorker]);
+
+  const isLoading = loadingAvailable || loadingSelected;
 
   const options = useMemo(
     () =>
-      (workers as Worker[]).map((w) => ({
+      workers.map((w) => ({
         value: String(w.id),
         label: workerLabel(w, isRtl),
-        // searchable haystack: both names + passport + mobile
         search: [w.fullNameAr, w.fullNameEn, w.passportNo, w.mobile]
           .filter(Boolean)
           .join(' ')
@@ -65,7 +79,7 @@ export default function WorkerSelect({
 
   const handleChange = (next: string | undefined) => {
     onChange?.(next);
-    const worker = (workers as Worker[]).find((w) => String(w.id) === next);
+    const worker = workers.find((w) => String(w.id) === next);
     if (worker) {
       form?.setFieldsValue({
         [nameArField]: worker.fullNameAr ?? undefined,
@@ -73,7 +87,6 @@ export default function WorkerSelect({
         [phoneField]: worker.mobile ?? worker.phone ?? undefined,
       });
     } else {
-      // cleared selection → clear the auto-filled fields
       form?.setFieldsValue({
         [nameArField]: undefined,
         [nameEnField]: undefined,
@@ -90,8 +103,16 @@ export default function WorkerSelect({
       loading={isLoading}
       value={value}
       onChange={handleChange}
-      placeholder={isRtl ? 'ابحث عن عامل (الاسم أو رقم الجواز)' : 'Search worker (name or passport)'}
-      notFoundContent={isLoading ? <Spin size="small" /> : undefined}
+      placeholder={isRtl ? 'ابحث عن عامل متاح (الاسم أو رقم الجواز)' : 'Search available worker (name or passport)'}
+      notFoundContent={
+        isLoading ? (
+          <Spin size="small" />
+        ) : isRtl ? (
+          'لا يوجد عامل متاح'
+        ) : (
+          'No available workers'
+        )
+      }
       filterOption={(input, option) =>
         ((option as any)?.search ?? '').includes(input.toLowerCase())
       }

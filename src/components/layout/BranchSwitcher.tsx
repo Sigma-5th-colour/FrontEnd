@@ -7,6 +7,7 @@ import { ApartmentOutlined, DownOutlined } from '@ant-design/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useBranches } from '@/hooks/api/useBranches';
 import { useAuthStore } from '@/store/authStore';
+import { ALL_BRANCHES_ID, isAllBranches } from '@/lib/branch';
 import type { Branch } from '@/types/api.types';
 import styles from './Header.module.css';
 
@@ -42,18 +43,22 @@ export default function BranchSwitcher() {
   const { branches } = useBranches();
   const queryClient = useQueryClient();
 
-  const items = useMemo(
-    () => flattenBranches(Array.isArray(branches) ? branches : [], language),
-    [branches, language]
-  );
+  const isAr = language === 'ar';
+  const allLabel = isAr ? 'كل الفروع' : 'All branches';
+
+  const items = useMemo(() => {
+    const list = flattenBranches(Array.isArray(branches) ? branches : [], language);
+    return [{ key: ALL_BRANCHES_ID, label: allLabel }, ...list];
+  }, [branches, language, allLabel]);
 
   // Don't render until a branch is selected (BranchGate handles first selection).
   if (!branchId) return null;
 
   const currentLabel =
     branchName ||
+    (isAllBranches(branchId) ? allLabel : null) ||
     items.find((i) => i.key === branchId)?.label?.replace(/^↳\s*/, '') ||
-    (language === 'ar' ? 'الفرع' : 'Branch');
+    (isAr ? 'الفرع' : 'Branch');
 
   const menu: MenuProps = {
     items: items.map((i) => ({ key: i.key, label: i.label })),
